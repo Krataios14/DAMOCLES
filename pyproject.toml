@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pdts"
-version = "0.1.0"
+version = "0.2.0"
 description = "Probabilistic damage tolerance: Monte Carlo fatigue crack growth, inspection planning and fleet risk"
 readme = "README.md"
 requires-python = ">=3.10"

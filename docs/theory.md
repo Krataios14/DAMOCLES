@@ -23,12 +23,18 @@ under the damage tolerance provisions of 14 CFR 25.571.
 K = Y(a) * sigma * sqrt(pi * a)
 
 Y(a) is the geometry correction. Built in: through crack (Y = 1), centre
-crack with the Feddersen finite width secant, and constant front-factor
+crack with the Feddersen finite width secant, constant front-factor
 approximations for semicircular surface (0.713) and quarter-circular
-corner (0.798) cracks; arbitrary Y(a) callables are accepted for anything
-better (see the Newman-Raju section below once implemented). The critical
-size ac solves Y(ac) sigma_max sqrt(pi ac) = Kc by bisection in log a,
-clamped to the validity limit of the geometry correction.
+corner (0.798) cracks, and the full Newman-Raju empirical equations for
+semi-elliptical surface cracks and quarter-elliptical corner cracks in
+finite plates under tension (NASA TM-85793 eqs. 14-19, 26-29, 37-51;
+coefficients cross-checked against NASA TP-1578 and TM-83200, which
+agree exactly). The Newman-Raju solutions run at a fixed aspect ratio
+with the crack front point selectable (depth, surface, or the max of
+the two) and respect the published validity limits (a/t < 1, c/b < 0.5,
+0.2 <= a/c <= 2). Arbitrary Y(a) callables are accepted for anything
+else. The critical size ac solves Y(ac) sigma_max sqrt(pi ac) = Kc by
+bisection in log a, clamped to the validity limit of the correction.
 
 ## 3. Crack growth laws
 
@@ -36,6 +42,18 @@ Paris: da/dN = C (dK)^m for dK above the threshold, zero below.
 Walker: the same with dK replaced by dK / (1-R)^(1-gamma), which folds
 the stress ratio dependence into an effective range; gamma = 1 recovers
 Paris.
+
+NASGRO (Forman-Mettu):
+
+da/dN = C [((1-f)/(1-R)) dK]^n (1 - dKth/dK)^p / (1 - Kmax/Kc)^q
+
+covering the threshold region, the Paris region and the instability
+asymptote in one expression, with Newman's plasticity-induced crack
+opening function f(R, alpha, Smax/sigma0) and the NASA threshold
+equation dKth(R, a) including the fixed intrinsic crack length
+a0 = 0.0381 mm (sources in nasgro.py). The bundled material database
+carries published NASGRO 4.0 fits from DOT/FAA/AR-05/15 with their
+provenance, converted from US customary to SI on load.
 
 C may be a per-sample array, which is how growth rate scatter enters the
 Monte Carlo. Heat-to-heat and lab-to-lab scatter in C is typically
@@ -133,7 +151,30 @@ log-transformed data. These are the MMPDS / CMH-17 definitions; the
 factors match the published tables and the confidence level is verified
 by simulation.
 
-## 10. Assumptions and scope
+## 10. The AC 33.14-1 hard alpha assessment
+
+For titanium rotors the FAA standardised the probabilistic damage
+tolerance problem: anomalies per million pounds of material from the
+published hard alpha exceedance curves, zone-based risk build-up with
+the crack at the life-limiting location of each zone, embedded circular
+cracks subsurface and semicircular cracks at surfaces, and POD curves
+for the in-service ultrasonic inspection. The ac3314 module implements
+that assessment for the Appendix 1 ring disk: the hoop stress field is
+the exact rotating-annulus-plus-Lame solution (it reproduces the AC's
+quoted bore stress within 2 MPa), the per-zone Paris physics inverts in
+closed form, and the fleet risk is a one-dimensional integral over the
+anomaly exceedance curve, cross-checked by Monte Carlo.
+
+Two data vintages matter and the module carries both: the 2001
+Appendix 3 figure A3-7 curve, which is what the calibration test case
+and its acceptance band were built on, and the 2017 Change 1 tabulation
+(Table A3-1), which differs by factors of several in the 1000-5000
+square mil region that dominates the test case risk. The calibration
+runs on the 2001 curve and lands inside the published acceptance bands
+for both the uninspected and inspected cases; general assessments
+default to the Change 1 tables.
+
+## 11. Assumptions and scope
 
 - LEFM throughout; no plasticity correction, no initiation life.
 - Constant amplitude or repeating-block loading; no retardation.

@@ -30,4 +30,4 @@ from .sampling import map_to_physical, sample_unit
 from .sensitivity import rank_drivers, sobol_indices
 from .study import DamageToleranceStudy, build_study
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
