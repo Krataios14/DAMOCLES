@@ -6,6 +6,10 @@ values. Units throughout: stress in MPa, stress intensity in MPa*sqrt(m),
 crack sizes in metres, life in cycles.
 """
 
+from .ac3314 import (
+    ExceedanceCurve, TabulatedPOD, hoop_stress as ac3314_hoop_stress,
+    run_test_case as ac3314_test_case,
+)
 from .allowables import a_basis, b_basis, basis_value, tolerance_factor
 from .fracture import (
     CenterCrack, CornerCrack, CustomGeometry, ParisLaw, SurfaceCrack,

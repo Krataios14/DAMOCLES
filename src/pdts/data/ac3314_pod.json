@@ -1,0 +1,59 @@
+{
+  "_comment": "POD curves from FAA AC 33.14-1 (2001), Appendix 5, Figures A5-1 to A5-5. The AC publishes these only as graphs; the numbers here were extracted from the vector path geometry of the official PDF anchored to the figure gridlines (estimated accuracy ~0.5% POD, 1-2% in size). They are faithful to the published curves but are a digitization, not an FAA-published table. UT curves are vs anomaly AREA in square mils; FPI and ECI curves are vs anomaly LENGTH in mils.",
+  "ut-3fbh-cal": {
+    "figure": "A5-4 solid",
+    "description": "Ultrasonic, field components, #3 FBH calibration, reject at calibration response. The calibration test case POD.",
+    "axis": "area_sq_mils",
+    "size": [1718, 2679, 4409, 6756, 10280, 13495, 16593, 19648, 23172, 26913, 31830, 39205, 45532, 53103, 58430],
+    "pod": [0.005, 0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 0.95, 0.98, 1.00]
+  },
+  "ut-3fbh-half": {
+    "figure": "A5-4 dash-dot",
+    "description": "Ultrasonic, #3 FBH calibration, reject at one half calibration response.",
+    "axis": "area_sq_mils",
+    "size": [1289, 2200, 3287, 5145, 6722, 8459, 9805, 11688, 13610, 16135, 19589, 22850, 26917],
+    "pod": [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 0.95, 0.98]
+  },
+  "ut-1fbh-cal": {
+    "figure": "A5-2 solid",
+    "description": "Ultrasonic, #1 FBH calibration, reject at calibration response.",
+    "axis": "area_sq_mils",
+    "size": [289, 491, 739, 1142, 1503, 1822, 2184, 2539, 2991, 3500, 4329, 5043, 5869],
+    "pod": [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 0.95, 0.98]
+  },
+  "ut-2fbh-cal": {
+    "figure": "A5-3 solid",
+    "description": "Ultrasonic, #2 FBH calibration, reject at calibration response.",
+    "axis": "area_sq_mils",
+    "size": [1160, 1953, 2966, 4586, 5986, 7320, 8717, 10304, 12040, 14175, 17286, 20242, 23566],
+    "pod": [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 0.95, 0.98]
+  },
+  "fpi-full-field": {
+    "figure": "A5-1 solid",
+    "description": "Fluorescent penetrant, finish-machined surfaces, full-field inspection. Surface LCF cracks, 2:1 length:depth, size is surface length.",
+    "axis": "length_mils",
+    "size": [39.6, 46.9, 54.7, 65.9, 75.4, 84.2, 94.0, 103.8, 117.2, 134.2, 161.2, 188.4, 222.8],
+    "pod": [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 0.95, 0.98]
+  },
+  "fpi-directed": {
+    "figure": "A5-1 dotted",
+    "description": "Fluorescent penetrant, directed inspection.",
+    "axis": "length_mils",
+    "size": [26.9, 31.8, 37.4, 45.2, 51.0, 57.6, 63.6, 71.9, 79.5, 92.1, 108.6, 128.0, 155.4],
+    "pod": [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 0.95, 0.98]
+  },
+  "eci-cal": {
+    "figure": "A5-5 solid",
+    "description": "Eddy current, finish-machined surfaces, reject at calibration notch response.",
+    "axis": "length_mils",
+    "size": [27.8, 30.8, 33.8, 37.7, 41.0, 43.9, 46.9, 50.0, 53.6, 58.0, 65.2, 71.4, 79.3],
+    "pod": [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 0.95, 0.98]
+  },
+  "eci-half": {
+    "figure": "A5-5 dotted",
+    "description": "Eddy current, reject at one half calibration notch response.",
+    "axis": "length_mils",
+    "size": [19.0, 21.2, 23.4, 26.3, 28.5, 30.4, 32.4, 34.6, 37.1, 40.4, 44.9, 49.3, 55.0],
+    "pod": [0.02, 0.05, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 0.95, 0.98]
+  }
+}
