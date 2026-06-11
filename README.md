@@ -1,4 +1,4 @@
-# pdts
+# Probabilistic Damage Tolerance Suite (PDTS)
 
 Probabilistic damage tolerance in Python: Monte Carlo fatigue crack growth,
 inspection planning against NDT detection curves, and the supporting
