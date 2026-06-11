@@ -109,7 +109,10 @@ class ParisLaw:
     def effective_dk(self, dk, stress_ratio):
         return dk
 
-    def rate(self, dk, stress_ratio=0.0, sample_slice=None):
+    def rate(self, dk, stress_ratio=0.0, a=None, kc=None, sample_slice=None):
+        """Growth rate per cycle. `a` (crack size) and `kc` (per-sample
+        toughness) are accepted for interface compatibility with laws
+        whose rate depends on them; Paris and Walker ignore both."""
         dk = np.asarray(dk, dtype=float)
         dk_eff = self.effective_dk(dk, stress_ratio)
         c = self._c_for(dk, sample_slice)

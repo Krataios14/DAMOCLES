@@ -8,8 +8,8 @@ import numpy as np
 import pytest
 from scipy import stats
 
-from damtol.random_vars import Normal
-from damtol.reliability import estimate_pof
+from pdts.random_vars import Normal
+from pdts.reliability import estimate_pof
 
 
 MU_R, S_R = 10.0, 1.0

@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from damtol.random_vars import Normal, Uniform
-from damtol.sampling import map_to_physical, sample_unit
+from pdts.random_vars import Normal, Uniform
+from pdts.sampling import map_to_physical, sample_unit
 
 
 def test_shapes_and_open_interval():

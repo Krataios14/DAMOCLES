@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from damtol.random_vars import (
+from pdts.random_vars import (
     Deterministic, Gumbel, Lognormal, Normal, Uniform, Weibull, from_spec,
 )
 

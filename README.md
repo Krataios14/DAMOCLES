@@ -1,4 +1,4 @@
-# damtol
+# pdts
 
 Probabilistic damage tolerance in Python: Monte Carlo fatigue crack growth,
 inspection planning against NDT detection curves, and the supporting
@@ -54,7 +54,7 @@ Needs Python 3.10+.
 
 ```
 pip install -e .
-damtol examples/ti64_disk_bore.yaml --sensitivity --plot out/
+pdts examples/ti64_disk_bore.yaml --sensitivity --plot out/
 ```
 
 which prints something like:
@@ -98,7 +98,7 @@ example for a 7075-T6 fuselage skin panel with eddy current inspections.
 
 ```python
 import numpy as np
-from damtol import (Lognormal, Normal, CornerCrack, WalkerLaw,
+from pdts import (Lognormal, Normal, CornerCrack, WalkerLaw,
                     DamageToleranceStudy, InspectionPlan, PODCurve)
 
 study = DamageToleranceStudy(

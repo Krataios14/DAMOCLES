@@ -1,7 +1,7 @@
 """The problem this repository started life as, in 2024: drop a hexagonal
 coin onto a grating with five vertical slots and ask how often it falls
 clean through. Back then it was a hand-rolled loop. Here it is as a
-limit state on the damtol reliability engine, plus the exact answer by
+limit state on the pdts reliability engine, plus the exact answer by
 quadrature that the original never had.
 
 Geometry matches the old config.py: 10 x 10 grating, five slots of
@@ -11,7 +11,7 @@ one slot.
 
 import numpy as np
 
-from damtol import Uniform, estimate_pof
+from pdts import Uniform, estimate_pof
 
 W, H = 10.0, 10.0
 N_SLOTS, SLOT_W = 5, 1.2

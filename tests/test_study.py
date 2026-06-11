@@ -1,10 +1,10 @@
 import numpy as np
 import pytest
 
-from damtol.random_vars import Deterministic, Lognormal, Normal
-from damtol.fracture import ThroughCrack, ParisLaw
-from damtol.inspection import InspectionPlan, PODCurve
-from damtol.study import DamageToleranceStudy, build_study
+from pdts.random_vars import Deterministic, Lognormal, Normal
+from pdts.fracture import ThroughCrack, ParisLaw
+from pdts.inspection import InspectionPlan, PODCurve
+from pdts.study import DamageToleranceStudy, build_study
 
 
 def small_spec(**overrides):

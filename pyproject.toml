@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "damtol"
+name = "pdts"
 version = "0.1.0"
 description = "Probabilistic damage tolerance: Monte Carlo fatigue crack growth, inspection planning and fleet risk"
 readme = "README.md"
@@ -21,7 +21,7 @@ dependencies = [
 dev = ["pytest>=7"]
 
 [project.scripts]
-damtol = "damtol.cli:main"
+pdts = "pdts.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

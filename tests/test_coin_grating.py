@@ -14,7 +14,7 @@ coin = importlib.util.module_from_spec(_spec)
 sys.modules["coin_grating"] = coin
 _spec.loader.exec_module(coin)
 
-from damtol import estimate_pof  # noqa: E402
+from pdts import estimate_pof  # noqa: E402
 
 
 def test_engine_matches_quadrature():

@@ -1,4 +1,4 @@
-"""damtol: probabilistic damage tolerance analysis.
+"""pdts: probabilistic damage tolerance analysis.
 
 Monte Carlo fatigue crack growth with variance reduction, inspection
 planning against POD curves, sensitivity analysis and material basis

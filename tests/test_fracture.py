@@ -7,7 +7,7 @@ N = (a0^(1-m/2) - ac^(1-m/2)) / ((m/2 - 1) * C * (Y*dsigma*sqrt(pi))^m)
 import numpy as np
 import pytest
 
-from damtol.fracture import (
+from pdts.fracture import (
     CenterCrack, CornerCrack, CustomGeometry, LifeResult, ParisLaw,
     SurfaceCrack, ThroughCrack, WalkerLaw, critical_size, grow,
 )
