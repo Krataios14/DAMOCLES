@@ -13,6 +13,7 @@ from .fracture import (
 )
 from .spectrum import CycleClass, Spectrum, rainflow
 from .inspection import InspectionPlan, PODCurve, apply_plan, sweep_intervals
+from .newman_raju import NewmanRajuCornerCrack, NewmanRajuSurfaceCrack
 from .random_vars import (
     Deterministic, Gumbel, Lognormal, Normal, Uniform, Weibull, from_spec,
 )

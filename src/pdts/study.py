@@ -17,7 +17,8 @@ from dataclasses import dataclass, field
 import numpy as np
 from scipy import stats
 
-from .fracture import GEOMETRIES, GROWTH_LAWS, grow
+from .fracture import GEOMETRIES, GROWTH_LAWS, grow, grow_spectrum
+from .spectrum import CycleClass, Spectrum
 from .inspection import InspectionOutcome, InspectionPlan, PODCurve, apply_plan
 from .random_vars import from_spec
 from .reliability import _clopper_pearson
@@ -25,6 +26,9 @@ from .sampling import map_to_physical, sample_unit
 from .sensitivity import rank_drivers, sobol_indices
 
 REQUIRED = ("initial_flaw", "stress_range", "toughness")
+# under spectrum loading the per-cycle stress is set by the spectrum and
+# load scatter enters as a multiplier instead
+SPECTRUM_REQUIRED = ("initial_flaw", "stress_scale", "toughness")
 
 
 @dataclass
@@ -93,10 +97,11 @@ class StudyResult:
 class DamageToleranceStudy:
     def __init__(self, name, variables, geometry, growth_law, service_cycles,
                  stress_ratio=0.0, inspection_plan=None, n_samples=200_000,
-                 method="lhs", seed=None, target_pof=None):
-        missing = [k for k in REQUIRED if k not in variables]
+                 method="lhs", seed=None, target_pof=None, spectrum=None):
+        required = SPECTRUM_REQUIRED if spectrum is not None else REQUIRED
+        missing = [k for k in required if k not in variables]
         if missing:
-            raise ValueError(f"study needs variables {list(REQUIRED)}, "
+            raise ValueError(f"study needs variables {list(required)}, "
                              f"missing {missing}")
         self.name = name
         self.variables = variables
@@ -109,11 +114,17 @@ class DamageToleranceStudy:
         self.method = method
         self.seed = seed
         self.target_pof = target_pof
+        self.spectrum = spectrum
 
     def _grow(self, x, eval_cycles=None):
         law = self.growth_law
         if "paris_c" in x:
             law = type(law)(**{**law.__dict__, "c": x["paris_c"]})
+        if self.spectrum is not None:
+            return grow_spectrum(x["initial_flaw"], self.spectrum,
+                                 self.geometry, law, x["toughness"],
+                                 stress_scale=x["stress_scale"],
+                                 eval_blocks=eval_cycles)
         return grow(x["initial_flaw"], x["stress_range"], self.geometry, law,
                     x["toughness"], stress_ratio=self.stress_ratio,
                     eval_cycles=eval_cycles)
@@ -170,7 +181,8 @@ def build_study(spec):
     if geo_type not in GEOMETRIES:
         raise ValueError(f"unknown geometry {geo_type!r}, "
                          f"expected one of {sorted(GEOMETRIES)}")
-    geometry = GEOMETRIES[geo_type](**{k: float(v) for k, v in geo.items()})
+    geometry = GEOMETRIES[geo_type](
+        **{k: (v if isinstance(v, str) else float(v)) for k, v in geo.items()})
 
     gr = dict(spec["growth"])
     law_name = gr.pop("law")
