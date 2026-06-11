@@ -1,0 +1,63 @@
+{
+  "_comment": "Published fatigue crack growth constants with provenance. US-customary entries are in in/cycle and ksi*sqrt(in) exactly as printed in the source; the loader converts to SI. None of this is design data; consult the source and your own basis before using in anything that flies.",
+  "ti-6al-4v-ac33.14": {
+    "name": "Ti-6Al-4V, generic average air data (AC 33.14-1 calibration test case)",
+    "units": "si",
+    "paris": { "c": 9.25e-13, "m": 3.87, "dk_threshold": 0.0 },
+    "toughness": { "kic": 64.5 },
+    "strength": { "ys": 834.0, "uts": 910.0 },
+    "elastic": { "e": 120000.0, "nu": 0.361, "density_kg_m3": 4450.0 },
+    "source": "FAA AC 33.14-1 (2001), Appendix 1, p. A1-2; Paris fit from MCIC-HB-01R Damage Tolerant Design Handbook (Dec 1983) p. 411.257, Fig. 4.113.104. da/dN in m/cycle, dK in MPa sqrt(m), R = 0 data, no stress ratio correction."
+  },
+  "2024-t3-sheet-lt": {
+    "name": "2024-T3 clad and bare sheet, L-T (NASGRO ID M2EA11AB1)",
+    "units": "us",
+    "nasgro": {
+      "c": 0.800e-8, "n": 3.200, "p": 0.250, "q": 1.000,
+      "dk1": 1.22, "cth_plus": 1.21, "cth_minus": 0.10,
+      "alpha": 2.0, "smax_sigma0": 0.30
+    },
+    "walker": { "c": 0.167e-8, "n": 3.273, "m_plus": 0.618, "m_minus": 0.164 },
+    "toughness": { "kic": 30.0, "kc": 74.3, "kc_thickness_in": 0.100 },
+    "strength": { "ys": 53.0 },
+    "source": "DOT/FAA/AR-05/15, Fatigue Crack Growth Database for Damage Tolerance Analysis (Forman et al., 2005), Figures B-4a/B-4b (NASGRO 4.0 fit) and B-5a/B-5b (Walker fit)."
+  },
+  "7075-t651-plate-lt": {
+    "name": "7075-T651 plate, L-T (NASGRO ID M7HB11AB1)",
+    "units": "us",
+    "nasgro": {
+      "c": 0.300e-7, "n": 2.800, "p": 0.500, "q": 1.000,
+      "dk1": 0.70, "cth_plus": 1.30, "cth_minus": 0.10,
+      "alpha": 2.0, "smax_sigma0": 0.30
+    },
+    "walker": { "c": 0.130e-7, "n": 2.791, "m_plus": 0.650 },
+    "toughness": { "kic": 28.0, "kc": 49.9, "kc_thickness_in": 0.450 },
+    "strength": { "ys": 75.0 },
+    "source": "DOT/FAA/AR-05/15, Figures B-25 (NASGRO 4.0 fit) and B-26 (Walker fit)."
+  },
+  "2014-t6-sheet-tl": {
+    "name": "2014-T6 sheet, T-L (NASGRO ID M2AD12AB1)",
+    "units": "us",
+    "nasgro": {
+      "c": 0.230e-7, "n": 3.000, "p": 0.500, "q": 0.500,
+      "dk1": 0.77, "cth_plus": 2.20, "cth_minus": 0.10,
+      "alpha": 2.0, "smax_sigma0": 0.30
+    },
+    "walker": { "c": 0.206e-8, "n": 3.575, "m_plus": 0.597 },
+    "toughness": { "kic": 20.0, "kc": 48.2, "kc_thickness_in": 0.063 },
+    "strength": { "ys": 63.0 },
+    "source": "DOT/FAA/AR-05/15, Figures B-1 (NASGRO 4.0 fit) and B-2 (Walker fit)."
+  },
+  "7475-t7351-plate-lt": {
+    "name": "7475-T7351 plate, L-T (NASGRO ID M7TF11AB1)",
+    "units": "us",
+    "nasgro": {
+      "c": 0.400e-7, "n": 2.600, "p": 0.500, "q": 1.000,
+      "dk1": 0.70, "cth_plus": 2.40, "cth_minus": 0.10,
+      "alpha": 2.0, "smax_sigma0": 0.30
+    },
+    "toughness": { "kic": 40.0, "kc": 114.0, "kc_thickness_in": 0.300 },
+    "strength": { "ys": 61.0 },
+    "source": "DOT/FAA/AR-05/15, Figures B-31a/B-31b (NASGRO 4.0 fit)."
+  }
+}

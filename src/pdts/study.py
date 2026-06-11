@@ -185,17 +185,23 @@ def build_study(spec):
         **{k: (v if isinstance(v, str) else float(v)) for k, v in geo.items()})
 
     gr = dict(spec["growth"])
-    law_name = gr.pop("law")
-    if law_name not in GROWTH_LAWS:
-        raise ValueError(f"unknown growth law {law_name!r}, "
-                         f"expected one of {sorted(GROWTH_LAWS)}")
-    if "paris_c" not in variables:
-        if "c" not in gr:
-            raise ValueError("growth law needs 'c', or supply a 'paris_c' variable")
+    if "material" in gr:
+        from .materials import growth_law as material_growth_law
+        law = material_growth_law(gr.pop("material"), kind=gr.pop("law", None))
+        if gr:
+            raise ValueError(f"unexpected growth keys with 'material': {sorted(gr)}")
     else:
-        gr.pop("c", None)
-    law = GROWTH_LAWS[law_name](c=float(gr.pop("c", 1.0)),
-                                **{k: float(v) for k, v in gr.items()})
+        law_name = gr.pop("law")
+        if law_name not in GROWTH_LAWS:
+            raise ValueError(f"unknown growth law {law_name!r}, "
+                             f"expected one of {sorted(GROWTH_LAWS)}")
+        if "paris_c" not in variables:
+            if "c" not in gr:
+                raise ValueError("growth law needs 'c', or supply a 'paris_c' variable")
+        else:
+            gr.pop("c", None)
+        law = GROWTH_LAWS[law_name](c=float(gr.pop("c", 1.0)),
+                                    **{k: float(v) for k, v in gr.items()})
 
     analysis = spec.get("analysis", {})
     service = float(spec["service_cycles"])

@@ -13,6 +13,10 @@ from .fracture import (
 )
 from .spectrum import CycleClass, Spectrum, rainflow
 from .inspection import InspectionPlan, PODCurve, apply_plan, sweep_intervals
+from .materials import available as available_materials
+from .materials import get as get_material
+from .materials import growth_law as material_growth_law
+from .nasgro import NasgroLaw, newman_opening_function
 from .newman_raju import NewmanRajuCornerCrack, NewmanRajuSurfaceCrack
 from .random_vars import (
     Deterministic, Gumbel, Lognormal, Normal, Uniform, Weibull, from_spec,
