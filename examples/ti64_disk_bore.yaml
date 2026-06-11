@@ -1,0 +1,36 @@
+# Probabilistic damage tolerance of a compressor disk bore feature.
+# One cycle = one flight (startup to shutdown). Property values are
+# illustrative, in the right range for Ti-6Al-4V, and NOT design data.
+#
+# Units: MPa, MPa*sqrt(m), metres, cycles.
+
+name: Ti-6Al-4V compressor disk bore, corner crack
+
+variables:
+  # inherent material/manufacturing anomaly at a bore corner
+  initial_flaw: {dist: lognormal, mean: 6.0e-5, cov: 0.6}
+  # hoop stress range per flight cycle at the bore
+  stress_range: {dist: normal, mean: 400.0, std: 20.0}
+  # plane strain fracture toughness
+  toughness: {dist: normal, mean: 75.0, std: 5.0}
+  # Paris coefficient scatter, lab-to-lab and heat-to-heat
+  paris_c: {dist: lognormal, mean: 2.5e-12, cov: 0.45}
+
+geometry: {type: corner}
+
+growth: {law: walker, m: 3.87, gamma: 0.65, dk_threshold: 2.0}
+
+stress_ratio: 0.05
+
+service_cycles: 20000
+
+inspection:
+  interval: 4000          # fluorescent penetrant at every shop visit
+  pod_a50: 0.4e-3
+  pod_a90: 1.0e-3
+
+analysis:
+  samples: 200000
+  method: lhs
+  seed: 42
+  target_pof: 1.0e-3

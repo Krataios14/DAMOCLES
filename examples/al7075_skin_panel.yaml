@@ -1,0 +1,32 @@
+# Pressurised fuselage skin panel, centre crack at a rivet row.
+# One cycle = one pressurisation. Property values are illustrative,
+# in the right range for 7075-T6 sheet, and NOT design data.
+#
+# Units: MPa, MPa*sqrt(m), metres, cycles.
+
+name: 7075-T6 fuselage skin, centre crack at rivet row
+
+variables:
+  initial_flaw: {dist: lognormal, mean: 6.0e-4, cov: 0.5}
+  stress_range: {dist: normal, mean: 85.0, std: 6.0}
+  toughness: {dist: normal, mean: 68.0, std: 4.0}     # thin sheet Kc
+  paris_c: {dist: lognormal, mean: 2.0e-11, cov: 0.35}
+
+geometry: {type: center, width: 0.4}
+
+growth: {law: paris, m: 3.7, dk_threshold: 1.5}
+
+stress_ratio: 0.0
+
+service_cycles: 60000
+
+inspection:
+  interval: 10000         # eddy current at heavy maintenance checks
+  pod_a50: 2.0e-3
+  pod_a90: 6.0e-3
+
+analysis:
+  samples: 200000
+  method: lhs
+  seed: 7
+  target_pof: 1.0e-5
