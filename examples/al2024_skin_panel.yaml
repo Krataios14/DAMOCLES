@@ -1,0 +1,36 @@
+# Pressurised fuselage skin panel, centre crack at a rivet row.
+# One cycle = one pressurisation.
+#
+# Material: 2024-T3 clad and bare sheet, L-T, NASGRO 4.0 equation fit
+# from DOT/FAA/AR-05/15 (ID M2EA11AB1), Newman closure, R-dependent
+# threshold, toughness term against the thin-sheet Kc of 74.3
+# ksi sqrt(in) = 81.6 MPa sqrt(m). The flaw and stress inputs are
+# component assumptions, not measurements.
+#
+# Units: MPa, MPa*sqrt(m), metres, cycles.
+
+name: 2024-T3 fuselage skin, centre crack at rivet row (FCGD material)
+
+variables:
+  initial_flaw: {dist: lognormal, mean: 1.0e-3, cov: 0.5}
+  stress_range: {dist: normal, mean: 100.0, std: 7.0}
+  toughness: {dist: normal, mean: 81.6, std: 5.0}     # thin sheet Kc
+
+geometry: {type: center, width: 0.4}
+
+growth: {material: 2024-t3-sheet-lt, law: nasgro}
+
+stress_ratio: 0.0
+
+service_cycles: 60000
+
+inspection:
+  interval: 10000         # eddy current at heavy maintenance checks
+  pod_a50: 2.0e-3
+  pod_a90: 6.0e-3
+
+analysis:
+  samples: 200000
+  method: lhs
+  seed: 7
+  target_pof: 1.0e-5

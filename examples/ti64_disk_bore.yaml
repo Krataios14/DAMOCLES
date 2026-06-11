@@ -1,24 +1,31 @@
-# Probabilistic damage tolerance of a compressor disk bore feature.
-# One cycle = one flight (startup to shutdown). Property values are
-# illustrative, in the right range for Ti-6Al-4V, and NOT design data.
+# Probabilistic damage tolerance of a compressor disk bore feature,
+# corner crack at the bore edge. One cycle = one flight.
+#
+# Material: the generic Ti-6Al-4V average-air Paris fit used by the
+# AC 33.14-1 calibration test case (MCIC-HB-01R via the AC, C = 9.25e-13
+# m/cycle MPa sqrt(m), m = 3.87, KIc = 64.5 MPa sqrt(m)). The paris_c
+# variable spreads heat-to-heat scatter around that average; toughness
+# scatter is set about the handbook value. Stress and flaw inputs are
+# component assumptions, not measurements.
 #
 # Units: MPa, MPa*sqrt(m), metres, cycles.
 
-name: Ti-6Al-4V compressor disk bore, corner crack
+name: Ti-6Al-4V compressor disk bore, corner crack (AC 33.14 material)
 
 variables:
   # inherent material/manufacturing anomaly at a bore corner
-  initial_flaw: {dist: lognormal, mean: 6.0e-5, cov: 0.6}
+  initial_flaw: {dist: lognormal, mean: 1.2e-4, cov: 0.6}
   # hoop stress range per flight cycle at the bore
-  stress_range: {dist: normal, mean: 400.0, std: 20.0}
-  # plane strain fracture toughness
-  toughness: {dist: normal, mean: 75.0, std: 5.0}
-  # Paris coefficient scatter, lab-to-lab and heat-to-heat
-  paris_c: {dist: lognormal, mean: 2.5e-12, cov: 0.45}
+  stress_range: {dist: normal, mean: 480.0, std: 25.0}
+  # plane strain fracture toughness about the AC value of 64.5
+  toughness: {dist: normal, mean: 64.5, std: 4.0}
+  # Paris coefficient scatter about the AC average-air fit
+  paris_c: {dist: lognormal, mean: 9.25e-13, cov: 0.45}
 
-geometry: {type: corner}
+# Newman-Raju quarter-circular corner crack in the bore rail section
+geometry: {type: nr-corner, thickness: 0.025, width: 0.080, aspect: 1.0}
 
-growth: {law: walker, m: 3.87, gamma: 0.65, dk_threshold: 2.0}
+growth: {law: paris, m: 3.87}
 
 stress_ratio: 0.05
 
