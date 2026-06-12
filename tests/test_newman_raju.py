@@ -4,8 +4,8 @@ NASA TM-85793 and the classical embedded-crack results."""
 import numpy as np
 import pytest
 
-from pdts.fracture import ParisLaw, grow
-from pdts.newman_raju import (
+from damocles.fracture import ParisLaw, grow
+from damocles.newman_raju import (
     NewmanRajuCornerCrack, NewmanRajuSurfaceCrack, corner_crack_f,
     shape_factor_q, surface_crack_f,
 )

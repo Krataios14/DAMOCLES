@@ -5,8 +5,8 @@ constant amplitude limits."""
 import numpy as np
 import pytest
 
-from pdts.fracture import ParisLaw, ThroughCrack, grow, grow_spectrum
-from pdts.spectrum import CycleClass, Spectrum, _peaks_valleys, rainflow
+from damocles.fracture import ParisLaw, ThroughCrack, grow, grow_spectrum
+from damocles.spectrum import CycleClass, Spectrum, _peaks_valleys, rainflow
 
 # the standard's example history, peaks and valleys labelled A through I
 ASTM_HISTORY = [-2.0, 1.0, -3.0, 5.0, -1.0, 3.0, -4.0, 4.0, -2.0]

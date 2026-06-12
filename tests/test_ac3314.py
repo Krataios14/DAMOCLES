@@ -10,7 +10,7 @@ Advisory Circular itself prescribes for probabilistic rotor codes:
 import numpy as np
 import pytest
 
-from pdts.ac3314 import (
+from damocles.ac3314 import (
     ACCEPTANCE_NO_INSPECTION, ACCEPTANCE_WITH_INSPECTION, ExceedanceCurve,
     TabulatedPOD, build_zones, hoop_stress, run_test_case,
 )

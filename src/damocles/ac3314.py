@@ -63,7 +63,7 @@ AREA_FACTOR = {"embedded": np.pi, "surface": np.pi / 2.0}
 
 
 def _load(name):
-    path = resources.files("pdts").joinpath(f"data/{name}")
+    path = resources.files("damocles").joinpath(f"data/{name}")
     with path.open("r", encoding="utf-8") as fh:
         data = json.load(fh)
     data.pop("_comment", None)

@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pdts"
+name = "damocles"
 version = "0.2.0"
 description = "Probabilistic damage tolerance: Monte Carlo fatigue crack growth, inspection planning and fleet risk"
 readme = "README.md"
@@ -21,13 +21,13 @@ dependencies = [
 dev = ["pytest>=7"]
 
 [project.scripts]
-pdts = "pdts.cli:main"
+damocles = "damocles.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-pdts = ["data/*.json"]
+damocles = ["data/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

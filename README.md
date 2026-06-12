@@ -1,4 +1,4 @@
-# Probabilistic Damage Tolerance Suite (PDTS)
+# DAmage tolerance MOnte Carlo Life Estimation Suite (DAMOCLES)
 
 Monte Carlo fatigue crack growth for safety-critical metallic structure,
 with the NASGRO equation, Newman-Raju stress intensity solutions,
@@ -14,7 +14,7 @@ probabilistic rotor codes.
 You describe a component as distributions instead of point values:
 initial flaw size, stress per cycle (constant amplitude or a rainflow
 counted spectrum), fracture toughness, growth rate coefficient. For each
-study PDTS produces:
+study DAMOCLES produces:
 
 - probability of failure over the service life, with an exact
   Clopper-Pearson confidence interval and the equivalent reliability
@@ -43,7 +43,7 @@ disk with fully specified geometry, loading, material and anomaly
 distribution: "Test case results in the ranges from 1.27E-09 to 1.93E-09
 (for the 'no inspection' case) and from 8.36E-10 to 1.53E-09 (for the
 'with in-service inspection' case) are considered acceptable." That is
-the qualification gate the FAA wrote for codes like DARWIN. PDTS runs
+the qualification gate the FAA wrote for codes like DARWIN. DAMOCLES runs
 the test case in closed form (the test case physics is deterministic
 given anomaly size, so the risk reduces to a one-dimensional integral
 over the exceedance curve) and again by Monte Carlo through its own
@@ -54,7 +54,7 @@ One detail discovered on the way: the 2017 Change 1 tabulation of the
 anomaly distribution (Table A3-1) differs from the original 2001 figure
 A3-7 by factors of several in the 1,000 to 5,000 square mil region that
 dominates the test case risk. The acceptance band predates Change 1, so
-the calibration must run on the 2001 curve. PDTS bundles both vintages,
+the calibration must run on the 2001 curve. DAMOCLES bundles both vintages,
 digitized from the official PDFs, and documents which one each
 assessment uses.
 
@@ -107,7 +107,7 @@ Needs Python 3.10+.
 
 ```
 pip install -e .
-pdts examples/ti64_disk_bore.yaml --sensitivity --plot out/
+damocles examples/ti64_disk_bore.yaml --sensitivity --plot out/
 python examples/ac3314_test_case.py
 python -m pytest -q
 ```
@@ -143,7 +143,7 @@ fit with eddy current inspections.
 ## Using it as a library
 
 ```python
-from pdts import (Lognormal, Normal, DamageToleranceStudy,
+from damocles import (Lognormal, Normal, DamageToleranceStudy,
                   InspectionPlan, PODCurve, NewmanRajuCornerCrack,
                   material_growth_law)
 
@@ -188,7 +188,7 @@ and are reported as such, not silently dropped.
 
 ## Design allowables
 
-`pdts.allowables` computes one-sided lower tolerance bounds from
+`damocles.allowables` computes one-sided lower tolerance bounds from
 measured samples: B-basis (90% coverage at 95% confidence) and A-basis
 (99/95), using exact normal-theory factors from the noncentral t
 distribution, on raw or log-transformed data. Use it to turn your own
@@ -198,7 +198,7 @@ verified by simulation in the test suite.
 
 If you need the toughness input itself predicted from composition with
 finite-sample guarantees, that is a different problem and a different
-tool: FTQS (Fracture Toughness Qualification Suite). PDTS consumes
+tool: FTQS (Fracture Toughness Qualification Suite). DAMOCLES consumes
 toughness as a distribution; FTQS is one defensible way to get one for
 alloys you have not tested.
 
@@ -231,20 +231,20 @@ alloys you have not tested.
 ## Repository layout
 
 ```
-src/pdts/random_vars.py   input distributions
-src/pdts/sampling.py      MC / LHS / Sobol sample generation
-src/pdts/reliability.py   pof estimation, exact CIs, importance sampling
-src/pdts/fracture.py      growth laws, geometry factors, life integration
-src/pdts/newman_raju.py   NASA TM-85793 surface and corner crack solutions
-src/pdts/nasgro.py        Forman-Mettu equation with Newman closure
-src/pdts/spectrum.py      ASTM E1049 rainflow, spectrum blocks
-src/pdts/inspection.py    POD curves, inspection plans, risk arithmetic
-src/pdts/ac3314.py        AC 33.14-1 hard alpha assessment + calibration
-src/pdts/materials.py     cited material database (data/materials.json)
-src/pdts/sensitivity.py   Sobol indices, Saltelli/Jansen estimators
-src/pdts/allowables.py    A- and B-basis tolerance bounds
-src/pdts/study.py         YAML-driven studies
-src/pdts/cli.py           command line entry point
+src/damocles/random_vars.py   input distributions
+src/damocles/sampling.py      MC / LHS / Sobol sample generation
+src/damocles/reliability.py   pof estimation, exact CIs, importance sampling
+src/damocles/fracture.py      growth laws, geometry factors, life integration
+src/damocles/newman_raju.py   NASA TM-85793 surface and corner crack solutions
+src/damocles/nasgro.py        Forman-Mettu equation with Newman closure
+src/damocles/spectrum.py      ASTM E1049 rainflow, spectrum blocks
+src/damocles/inspection.py    POD curves, inspection plans, risk arithmetic
+src/damocles/ac3314.py        AC 33.14-1 hard alpha assessment + calibration
+src/damocles/materials.py     cited material database (data/materials.json)
+src/damocles/sensitivity.py   Sobol indices, Saltelli/Jansen estimators
+src/damocles/allowables.py    A- and B-basis tolerance bounds
+src/damocles/study.py         YAML-driven studies
+src/damocles/cli.py           command line entry point
 docs/theory.md            the equations and assumptions
 docs/verification.md      claim -> reference -> test matrix
 examples/                 disk bore, skin panel, AC test case, coin

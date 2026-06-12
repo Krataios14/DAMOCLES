@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from pdts.allowables import a_basis, b_basis, basis_value, tolerance_factor
+from damocles.allowables import a_basis, b_basis, basis_value, tolerance_factor
 
 
 def test_published_k_factors():

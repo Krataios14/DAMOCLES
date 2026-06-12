@@ -5,7 +5,7 @@ bands the FAA published for exactly this purpose.
     python examples/ac3314_test_case.py
 """
 
-from pdts.ac3314 import (
+from damocles.ac3314 import (
     ACCEPTANCE_NO_INSPECTION, ACCEPTANCE_WITH_INSPECTION, hoop_stress,
     run_test_case,
 )

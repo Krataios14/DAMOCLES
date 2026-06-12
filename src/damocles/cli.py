@@ -1,7 +1,7 @@
 """Command line entry point: run a study from a YAML file.
 
-    pdts config.yaml
-    pdts config.yaml --sensitivity --plot out/
+    damocles config.yaml
+    damocles config.yaml --sensitivity --plot out/
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from .study import build_study
 
 def main(argv=None):
     parser = argparse.ArgumentParser(
-        prog="pdts",
+        prog="damocles",
         description="Probabilistic damage tolerance from a YAML study file.")
     parser.add_argument("config", help="study definition, see examples/")
     parser.add_argument("--sensitivity", action="store_true",

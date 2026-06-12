@@ -26,7 +26,7 @@ INCH = 0.0254         # m
 
 
 def _raw():
-    path = resources.files("pdts").joinpath("data/materials.json")
+    path = resources.files("damocles").joinpath("data/materials.json")
     with path.open("r", encoding="utf-8") as fh:
         data = json.load(fh)
     data.pop("_comment", None)

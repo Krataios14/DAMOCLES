@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from pdts.random_vars import Normal, Uniform
-from pdts.sampling import map_to_physical, sample_unit
+from damocles.random_vars import Normal, Uniform
+from damocles.sampling import map_to_physical, sample_unit
 
 
 def test_shapes_and_open_interval():

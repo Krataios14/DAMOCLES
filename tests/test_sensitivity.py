@@ -6,8 +6,8 @@ T1 = 0.5576, T2 = 0.4424, T3 = 0.2437 (a = 7, b = 0.1).
 import numpy as np
 import pytest
 
-from pdts.random_vars import Uniform
-from pdts.sensitivity import rank_drivers, sobol_indices
+from damocles.random_vars import Uniform
+from damocles.sensitivity import rank_drivers, sobol_indices
 
 A, B = 7.0, 0.1
 

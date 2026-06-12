@@ -1,10 +1,10 @@
 import numpy as np
 import pytest
 
-from pdts.fracture import ParisLaw, ThroughCrack, WalkerLaw, grow
-from pdts.materials import KSI, KSI_SQRT_IN, available, get, growth_law
-from pdts.nasgro import NasgroLaw
-from pdts.study import build_study
+from damocles.fracture import ParisLaw, ThroughCrack, WalkerLaw, grow
+from damocles.materials import KSI, KSI_SQRT_IN, available, get, growth_law
+from damocles.nasgro import NasgroLaw
+from damocles.study import build_study
 
 
 def test_every_entry_has_a_source():

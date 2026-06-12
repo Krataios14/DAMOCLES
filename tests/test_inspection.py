@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from pdts.fracture import LifeResult
-from pdts.inspection import InspectionPlan, PODCurve, apply_plan
+from damocles.fracture import LifeResult
+from damocles.inspection import InspectionPlan, PODCurve, apply_plan
 
 
 def make_life(nf, eval_cycles, a_at):

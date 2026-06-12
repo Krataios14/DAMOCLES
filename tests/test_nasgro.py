@@ -7,8 +7,8 @@ right expectation, not equality)."""
 import numpy as np
 import pytest
 
-from pdts.fracture import ThroughCrack, grow
-from pdts.nasgro import NasgroLaw, newman_opening_function
+from damocles.fracture import ThroughCrack, grow
+from damocles.nasgro import NasgroLaw, newman_opening_function
 
 # 2024-T3 clad/bare sheet L-T constants, DOT/FAA/AR-05/15 fig. B-4a,
 # in US units (in/cycle, ksi sqrt(in)); the equation is unit-agnostic

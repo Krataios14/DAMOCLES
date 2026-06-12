@@ -1,10 +1,10 @@
 import numpy as np
 import pytest
 
-from pdts.random_vars import Deterministic, Lognormal, Normal
-from pdts.fracture import ThroughCrack, ParisLaw
-from pdts.inspection import InspectionPlan, PODCurve
-from pdts.study import DamageToleranceStudy, build_study
+from damocles.random_vars import Deterministic, Lognormal, Normal
+from damocles.fracture import ThroughCrack, ParisLaw
+from damocles.inspection import InspectionPlan, PODCurve
+from damocles.study import DamageToleranceStudy, build_study
 
 
 def small_spec(**overrides):
