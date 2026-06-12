@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "damocles"
 version = "0.2.0"
-description = "Probabilistic damage tolerance: Monte Carlo fatigue crack growth, inspection planning and fleet risk"
+description = "Damage tolerance Monte Carlo: NASGRO crack growth, Newman-Raju SIFs, POD-based inspection planning, and the FAA AC 33.14-1 calibration test case inside the published acceptance bands"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }

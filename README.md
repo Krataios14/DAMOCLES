@@ -1,4 +1,9 @@
-# DAmage tolerance MOnte Carlo Life Estimation Suite (DAMOCLES)
+# Damage Tolerance Monte Carlo Life Estimation Suite (DAMOCLES)
+
+[![pypi](https://img.shields.io/pypi/v/damocles?label=pypi)](https://pypi.org/project/damocles/)
+[![tests](https://img.shields.io/github/actions/workflow/status/Krataios14/DAMOCLES/ci.yml?label=tests)](https://github.com/Krataios14/DAMOCLES/actions/workflows/ci.yml)
+[![python](https://img.shields.io/pypi/pyversions/damocles)](https://pypi.org/project/damocles/)
+[![license](https://img.shields.io/github/license/Krataios14/DAMOCLES)](LICENSE)
 
 Monte Carlo fatigue crack growth for safety-critical metallic structure,
 with the NASGRO equation, Newman-Raju stress intensity solutions,
@@ -106,7 +111,15 @@ and Windows, Python 3.10 to 3.14). Measured results:
 Needs Python 3.10+.
 
 ```
-pip install -e .
+pip install damocles
+```
+
+The worked examples and the test suite live in the repository:
+
+```
+git clone https://github.com/Krataios14/DAMOCLES
+cd DAMOCLES
+pip install -e .[dev]
 damocles examples/ti64_disk_bore.yaml --sensitivity --plot out/
 python examples/ac3314_test_case.py
 python -m pytest -q
@@ -144,8 +157,8 @@ fit with eddy current inspections.
 
 ```python
 from damocles import (Lognormal, Normal, DamageToleranceStudy,
-                  InspectionPlan, PODCurve, NewmanRajuCornerCrack,
-                  material_growth_law)
+                      InspectionPlan, PODCurve, NewmanRajuCornerCrack,
+                      material_growth_law)
 
 study = DamageToleranceStudy(
     "disk bore",
@@ -245,10 +258,10 @@ src/damocles/sensitivity.py   Sobol indices, Saltelli/Jansen estimators
 src/damocles/allowables.py    A- and B-basis tolerance bounds
 src/damocles/study.py         YAML-driven studies
 src/damocles/cli.py           command line entry point
-docs/theory.md            the equations and assumptions
-docs/verification.md      claim -> reference -> test matrix
-examples/                 disk bore, skin panel, AC test case, coin
-tests/                    112 tests, all against external references
+docs/theory.md                the equations and assumptions
+docs/verification.md          claim -> reference -> test matrix
+examples/                     disk bore, skin panel, AC test case, coin
+tests/                        112 tests, all against external references
 ```
 
 The original repository was a high school Monte Carlo toy that dropped
