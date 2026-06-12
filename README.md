@@ -2,7 +2,6 @@
 
 [![pypi](https://img.shields.io/pypi/v/damocles?label=pypi)](https://pypi.org/project/damocles/)
 [![tests](https://img.shields.io/github/actions/workflow/status/Krataios14/DAMOCLES/ci.yml?label=tests)](https://github.com/Krataios14/DAMOCLES/actions/workflows/ci.yml)
-[![python](https://img.shields.io/pypi/pyversions/damocles)](https://pypi.org/project/damocles/)
 [![license](https://img.shields.io/github/license/Krataios14/DAMOCLES)](LICENSE)
 
 Monte Carlo fatigue crack growth for safety-critical metallic structure,
