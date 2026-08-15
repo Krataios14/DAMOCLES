@@ -117,9 +117,43 @@ damage-equivalent range (sum n dS^p conserved, p close to the growth
 exponent), and never alter the true block peak stress that governs
 fracture.
 
-Retardation (e.g. Willenborg) is deliberately out of scope for now: it
-would force cycle-by-cycle integration and its parameters are rarely
-known at the fleet statistics level this tool targets.
+Willenborg retardation is available as an opt-in addition through
+``grow_spectrum_retarded``. The input is an ordered ``SpectrumSequence``;
+merged rainflow classes cannot be used because they discard the load order.
+
+The original Willenborg effective-stress model stores the crack length,
+maximum stress intensity, and plane-stress plastic-zone size associated with
+the controlling load:
+
+    r_p,OL = (1 / pi) (K_max,OL / sigma_y)^2
+    Y_OL = a_OL + r_p,OL
+
+For each later cycle, its unretarded zone boundary is
+``Y_i = a_i + r_p,i``. If ``Y_i > Y_OL``, that cycle is unretarded and
+replaces the stored controlling state. This zone comparison is the overload
+update rule; there is no stress-range threshold. Constant-amplitude cycles
+therefore remain unretarded as their zone boundary advances with the crack.
+
+When ``Y_i <= Y_OL``, AFGROW equations 5.2.3 and 5.2.4 give
+
+    K_required = K_max,OL sqrt(1 - (a_i - a_OL) / r_p,OL)
+    K_R = max(K_required - K_max,i, 0)
+    K_max,eff = max(K_max,i - K_R, 0)
+    K_min,eff = K_min,i - K_R
+
+The same ``K_R`` is subtracted from both ends of the cycle, so delta K is
+unchanged while ``K_min,eff`` remains positive; retardation is represented by
+the lower effective stress ratio. Following the zero-effective-R convention
+used in early applications of Willenborg, a negative ``K_min,eff`` is clipped
+to zero and ``delta K_eff = K_max,eff``. The resulting ``delta K_eff`` and
+``R_eff`` are passed to the selected growth law.
+
+Integration is cycle-by-cycle and life is returned in cycles. The
+plastic-zone coefficient assumes plane stress, the formulation remains an
+empirical LEFM interaction model, and predictions for safety-critical use
+need support from representative spectrum testing. The implementation follows
+Willenborg, Engle, and Wood, AFFDL-TM-71-1-FBR (1971), and the AFGROW Damage
+Tolerance Design Handbook, Section 5.2.1.2.
 
 ## 7. Inspections
 
@@ -177,7 +211,9 @@ default to the Change 1 tables.
 ## 11. Assumptions and scope
 
 - LEFM throughout; no plasticity correction, no initiation life.
-- Constant amplitude or repeating-block loading; no retardation.
+- Constant amplitude or repeating-block loading; ordered Willenborg
+  retardation is available via ``grow_spectrum_retarded`` using the
+  plane-stress and zero-effective-R assumptions described above.
 - A single dominant crack per part; no continuing damage or multi-site
   interaction.
 - Detected cracks leave the fleet (repair is not modelled as a renewal

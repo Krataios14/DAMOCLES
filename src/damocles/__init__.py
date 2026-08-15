@@ -14,8 +14,13 @@ from .allowables import a_basis, b_basis, basis_value, tolerance_factor
 from .fracture import (
     CenterCrack, CornerCrack, CustomGeometry, ParisLaw, SurfaceCrack,
     ThroughCrack, WalkerLaw, critical_size, grow, grow_spectrum,
+    grow_spectrum_retarded,
 )
-from .spectrum import CycleClass, Spectrum, rainflow
+from .spectrum import CycleClass, OrderedCycle, Spectrum, SpectrumSequence, rainflow
+from .retardation import (
+    WillenborgState, init_state, plastic_zone_radius,
+    residual_stress_intensity, effective_kr,
+)
 from .inspection import InspectionPlan, PODCurve, apply_plan, sweep_intervals
 from .materials import available as available_materials
 from .materials import get as get_material

@@ -157,3 +157,115 @@ def _merge(classes):
         key = (round(c.delta_sigma, 9), round(c.stress_ratio, 9))
         acc[key] = acc.get(key, 0.0) + c.count
     return [CycleClass(k[0], k[1], v) for k, v in sorted(acc.items())]
+
+
+# ------------------------------------------------ ordered cycle sequences
+
+
+@dataclass(frozen=True)
+class OrderedCycle:
+    """A single cycle with its position in the load history.
+
+    Unlike :class:`CycleClass` which merges identical cycles, an
+    ``OrderedCycle`` preserves the order and count (typically 1.0 for
+    a full cycle, 0.5 for a half cycle) so that load-interaction
+    models can evaluate sequence effects.
+    """
+
+    delta_sigma: float
+    stress_ratio: float
+    count: float
+    index: int
+
+
+@dataclass
+class SpectrumSequence:
+    """An ordered list of cycles from a stress history, preserving the
+    order required by load-interaction (retardation) models.
+
+    Construct via :meth:`from_history`.  The sequence carries
+    ``peak_stress`` (the true block peak, governing fracture) so that
+    binning or other reductions elsewhere cannot move it.
+    """
+
+    cycles: list
+    peak_stress: float
+    dropped_compressive: float
+
+    @classmethod
+    def from_history(cls, history):
+        """Build an ordered cycle sequence from one block of stress
+        history [MPa] via rainflow counting.
+
+        Full cycles get count = 1.0, residual half cycles get count = 0.5.
+        Compressive-peak cycles are dropped (crack is closed under LEFM).
+        """
+        counted = rainflow(history)
+        cycles = []
+        dropped = 0.0
+        peak = 0.0
+        for rng, mean, count in counted:
+            s_max = mean + 0.5 * rng
+            s_min = mean - 0.5 * rng
+            if s_max > peak:
+                peak = s_max
+            if s_max <= 0.0:
+                dropped += count
+                continue
+            eff_min = max(s_min, 0.0)
+            r = eff_min / s_max
+            cycles.append(OrderedCycle(
+                delta_sigma=s_max - eff_min,
+                stress_ratio=r,
+                count=count,
+                index=len(cycles),
+            ))
+        if not cycles:
+            raise ValueError("history contains no damaging cycles")
+        return cls(cycles=cycles, peak_stress=peak,
+                   dropped_compressive=dropped)
+
+    @classmethod
+    def from_history_ordered(cls, history):
+        """Build an ordered cycle sequence from a stress history,
+        preserving the original order of peaks and valleys.
+
+        Each adjacent peak-valley pair becomes a half-cycle (count=0.5).
+        This preserves sequence information for load-interaction models.
+        Compressive-peak cycles are dropped.
+        """
+        pts = _peaks_valleys(history)
+        cycles = []
+        dropped = 0.0
+        peak = 0.0
+        for i in range(len(pts) - 1):
+            s1, s2 = float(pts[i]), float(pts[i + 1])
+            s_max = max(s1, s2)
+            s_min = min(s1, s2)
+            if s_max > peak:
+                peak = s_max
+            if s_max <= 0.0:
+                dropped += 0.5
+                continue
+            eff_min = max(s_min, 0.0)
+            r = eff_min / s_max if s_max > 0 else 0.0
+            cycles.append(OrderedCycle(
+                delta_sigma=s_max - eff_min,
+                stress_ratio=r,
+                count=0.5,
+                index=len(cycles),
+            ))
+        if not cycles:
+            raise ValueError("history contains no damaging cycles")
+        return cls(cycles=cycles, peak_stress=peak,
+                   dropped_compressive=dropped)
+
+    @property
+    def n_cycles(self):
+        """Total number of cycle entries (not scaled by count)."""
+        return len(self.cycles)
+
+    @property
+    def total_count(self):
+        """Sum of all cycle counts."""
+        return sum(c.count for c in self.cycles)

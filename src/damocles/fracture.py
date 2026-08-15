@@ -261,6 +261,196 @@ def grow_spectrum(a0, spectrum, geometry, law, k_ic, stress_scale=1.0,
     return _integrate(a0, a_c, rate_of, eval_blocks, n_grid, chunk_size)
 
 
+def grow_spectrum_retarded(a0, sequence, geometry, law, k_ic, s_yield,
+                           stress_scale=1.0, max_cycles=1e8,
+                           max_blocks=10_000, chunk_size=100_000):
+    """Integrate ordered spectrum growth with Willenborg retardation.
+
+    Each cycle's unretarded plastic-zone boundary is compared with the
+    controlling boundary left by earlier loads.  A cycle that extends the
+    boundary is applied without retardation and becomes the new controlling
+    load.  Otherwise, equations 5.2.3 through 5.2.6 of the AFGROW Damage
+    Tolerance Design Handbook are used to obtain ``K_R`` and ``R_eff``.
+
+    Parameters
+    ----------
+    a0 : array-like
+        Initial crack sizes [m], shape (n_samples,).
+    sequence : SpectrumSequence
+        Ordered cycle sequence from ``SpectrumSequence.from_history_ordered``.
+        The ordered method must be used (not ``from_history`` which uses
+        rainflow counting) to preserve the correct cycle order for
+        load-interaction models.
+    geometry : Geometry
+        Stress intensity geometry factor Y(a).
+    law : growth law
+        Object with ``rate(dk, stress_ratio, a, kc)`` method.
+    k_ic : array-like
+        Fracture toughness [MPa sqrt(m)], shape (n_samples,) or scalar.
+    s_yield : float
+        Material yield strength [MPa] for the plane-stress plastic-zone
+        estimate.
+    stress_scale : array-like or float
+        Per-sample stress multiplier, shape (n_samples,) or scalar.
+    max_cycles : float
+        Integration stops when accumulated cycles reach this value.
+        Samples reaching this limit are treated as run-outs (infinite
+        life), not fractures.
+    max_blocks : int
+        Maximum number of spectrum repetitions before giving up.
+    chunk_size : int
+        Samples per chunk (memory control).
+
+    Returns
+    -------
+    LifeResult
+        ``cycles_to_failure`` in CYCLES (not blocks).  Infinite where
+        ``max_cycles`` or ``max_blocks`` was reached without fracture.
+        ``a_critical`` is the critical size for the highest peak in
+        the sequence.
+
+    Notes
+    -----
+    The zero-effective-R convention is used when subtracting ``K_R`` would
+    produce a negative effective stress ratio.  See
+    :mod:`damocles.retardation` for the equations and validity limits.
+    """
+    a0 = np.atleast_1d(np.asarray(a0, dtype=float))
+    n = a0.shape[0]
+    if n == 0:
+        raise ValueError("at least one initial crack size is required")
+    k_ic = np.broadcast_to(np.asarray(k_ic, dtype=float), (n,))
+    stress_scale = np.broadcast_to(np.asarray(stress_scale, dtype=float), (n,))
+    if np.any(a0 <= 0):
+        raise ValueError("initial crack sizes must be positive")
+    if not sequence.cycles:
+        raise ValueError("sequence has no cycles")
+    if not np.isfinite(s_yield) or s_yield <= 0.0:
+        raise ValueError("s_yield must be finite and positive")
+    if max_cycles <= 0:
+        raise ValueError("max_cycles must be positive")
+    if max_blocks <= 0:
+        raise ValueError("max_blocks must be positive")
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be positive")
+
+    a_c = critical_size(geometry, sequence.peak_stress * stress_scale, k_ic)
+
+    n_f = np.full(n, np.inf)
+
+    for start in range(0, n, chunk_size):
+        end = min(start + chunk_size, n)
+        m = end - start
+
+        a = a0[start:end].copy()
+        kc = k_ic[start:end]
+        scale = stress_scale[start:end]
+
+        from .retardation import (effective_kr, init_state,
+                                  plastic_zone_radius,
+                                  residual_stress_intensity)
+
+        state = init_state(m)
+
+        chunk_done = np.zeros(m, dtype=bool)
+        chunk_failed = np.zeros(m, dtype=bool)
+        chunk_cycles = np.zeros(m)
+
+        block = 0
+        while not chunk_done.all() and block < max_blocks:
+            block += 1
+
+            for cyc in sequence.cycles:
+                alive = ~chunk_done
+                if not alive.any():
+                    break
+
+                a_sub = a[alive]
+                kc_sub = kc[alive]
+                sc_sub = scale[alive]
+                alive_idx = np.where(alive)[0]
+
+                # fracture check BEFORE processing this cycle
+                s_max_cyc = cyc.delta_sigma / (1.0 - cyc.stress_ratio)
+                ac_cyc = critical_size(geometry, s_max_cyc * sc_sub, kc_sub)
+                newly_fractured = a_sub >= ac_cyc
+                if newly_fractured.any():
+                    fidx = alive_idx[newly_fractured]
+                    chunk_done[fidx] = True
+                    chunk_failed[fidx] = True
+
+                alive2 = ~chunk_done
+                if not alive2.any():
+                    continue
+
+                a2 = a[alive2]
+                kc2 = kc[alive2]
+                sc2 = scale[alive2]
+                alive2_idx = np.where(alive2)[0]
+
+                y_a2 = geometry.y(a2)
+                root2 = np.sqrt(np.pi * a2)
+                dk2 = y_a2 * sc2 * cyc.delta_sigma * root2
+                k_max2 = dk2 / (1.0 - cyc.stress_ratio)
+
+                # A load controls only when its unretarded plastic zone
+                # extends beyond the boundary left by earlier loads.  This
+                # is the zone comparison in the AFGROW cycle-by-cycle
+                # procedure and needs no arbitrary overload threshold.
+                r_p2 = plastic_zone_radius(k_max2, s_yield)
+                current_boundary = a2 + r_p2
+                stored_boundary = (state.a_overload[alive2] +
+                                   state.r_p[alive2])
+                new_zone = (~state.active[alive2] |
+                            (current_boundary > stored_boundary))
+                contained = state.active[alive2] & ~new_zone
+
+                k_r = residual_stress_intensity(
+                    a2, k_max2, state.k_max_ol[alive2],
+                    state.r_p[alive2], state.a_overload[alive2], contained)
+                dk_eff, r_eff = effective_kr(dk2, cyc.stress_ratio, k_r)
+
+                # Store the crack position at the start of a controlling
+                # cycle, before that cycle's growth increment is applied.
+                if new_zone.any():
+                    nidx = alive2_idx[new_zone]
+                    state.k_max_ol[nidx] = k_max2[new_zone]
+                    state.r_p[nidx] = r_p2[new_zone]
+                    state.a_overload[nidx] = a2[new_zone]
+                    state.active[nidx] = True
+
+                # growth rate
+                sample_indices = start + alive2_idx
+                v = law.rate(dk_eff, r_eff, a=a2, kc=kc2,
+                             sample_slice=sample_indices)
+
+                da = cyc.count * v
+                a[alive2_idx] += da
+
+                # always count every cycle toward elapsed life
+                chunk_cycles[alive2_idx] += cyc.count
+
+                # A crack that crosses the current cycle's critical size
+                # fails at the end of this cycle, rather than waiting for the
+                # next cycle in the sequence.
+                ac2 = critical_size(geometry, s_max_cyc * sc2, kc2)
+                newly_fractured = a[alive2_idx] >= ac2
+                if newly_fractured.any():
+                    fidx = alive2_idx[newly_fractured]
+                    chunk_done[fidx] = True
+                    chunk_failed[fidx] = True
+
+                # run-out at max_cycles (not a fracture)
+                over = (~chunk_done) & (chunk_cycles >= max_cycles)
+                if over.any():
+                    chunk_done[over] = True
+
+        n_f[start:end] = np.where(chunk_failed, chunk_cycles, np.inf)
+
+    return LifeResult(cycles_to_failure=n_f, a_critical=a_c,
+                      eval_cycles=None, a_at=None)
+
+
 def _integrate(a0, a_c, rate_of, eval_steps, n_grid, chunk_size):
     n = a0.shape[0]
     n_f = np.empty(n)
