@@ -15,8 +15,23 @@ a LEFM model (the crack is closed) and are dropped with a note in
 from __future__ import annotations
 
 from dataclasses import dataclass
+from collections.abc import Iterable, Mapping
+from numbers import Integral, Real
 
 import numpy as np
+
+
+MAX_ORDERED_CYCLES = 100_000
+
+
+def _finite_real(value, name):
+    """Return a finite float without accepting text or truth values."""
+    if isinstance(value, (bool, str, bytes)) or not isinstance(value, Real):
+        raise TypeError(f"{name} must be a real number")
+    result = float(value)
+    if not np.isfinite(result):
+        raise ValueError(f"{name} must be finite")
+    return result
 
 
 def _peaks_valleys(history):
@@ -68,9 +83,9 @@ def rainflow(history):
 
 @dataclass(frozen=True)
 class CycleClass:
-    delta_sigma: float    # stress range [MPa]
-    stress_ratio: float   # sigma_min / sigma_max
-    count: float          # cycles per block
+    delta_sigma: float  # stress range [MPa]
+    stress_ratio: float  # sigma_min / sigma_max
+    count: float  # cycles per block
 
 
 class Spectrum:
@@ -83,9 +98,11 @@ class Spectrum:
             raise ValueError("spectrum has no damaging cycle classes")
         # fracture is governed by the true peak of the block; binning and
         # other reductions must not be allowed to move it
-        self._peak = (peak_stress if peak_stress is not None else
-                      max(c.delta_sigma / (1.0 - c.stress_ratio)
-                          for c in self.classes))
+        self._peak = (
+            peak_stress
+            if peak_stress is not None
+            else max(c.delta_sigma / (1.0 - c.stress_ratio) for c in self.classes)
+        )
 
     @classmethod
     def from_history(cls, history, repeats=1.0):
@@ -104,9 +121,11 @@ class Spectrum:
             # crack only sees the tensile part of the excursion
             eff_min = max(s_min, 0.0)
             r = eff_min / s_max
-            classes.append(CycleClass(delta_sigma=s_max - eff_min,
-                                      stress_ratio=r,
-                                      count=count / repeats))
+            classes.append(
+                CycleClass(
+                    delta_sigma=s_max - eff_min, stress_ratio=r, count=count / repeats
+                )
+            )
         merged = _merge(classes)
         return cls(merged, dropped_compressive=dropped / repeats)
 
@@ -144,10 +163,12 @@ class Spectrum:
             ds = np.array([c.delta_sigma for c in members])
             rr = np.array([c.stress_ratio for c in members])
             ds_eq = float(np.average(ds**p, weights=w) ** (1.0 / p))
-            out.append(CycleClass(ds_eq, float(np.average(rr, weights=w)),
-                                  float(w.sum())))
-        return Spectrum(_merge(out), self.dropped_compressive,
-                        peak_stress=self.peak_stress)
+            out.append(
+                CycleClass(ds_eq, float(np.average(rr, weights=w)), float(w.sum()))
+            )
+        return Spectrum(
+            _merge(out), self.dropped_compressive, peak_stress=self.peak_stress
+        )
 
 
 def _merge(classes):
@@ -177,8 +198,27 @@ class OrderedCycle:
     count: float
     index: int
 
+    def __post_init__(self):
+        delta_sigma = _finite_real(self.delta_sigma, "delta_sigma")
+        stress_ratio = _finite_real(self.stress_ratio, "stress_ratio")
+        count = _finite_real(self.count, "count")
+        if delta_sigma <= 0.0:
+            raise ValueError("delta_sigma must be positive")
+        if not 0.0 <= stress_ratio < 1.0:
+            raise ValueError("stress_ratio must be in [0, 1)")
+        if count not in (0.5, 1.0):
+            raise ValueError("ordered cycle count must be 0.5 or 1.0")
+        if isinstance(self.index, bool) or not isinstance(self.index, Integral):
+            raise TypeError("index must be an integer")
+        if self.index < 0:
+            raise ValueError("index must be non-negative")
+        object.__setattr__(self, "delta_sigma", delta_sigma)
+        object.__setattr__(self, "stress_ratio", stress_ratio)
+        object.__setattr__(self, "count", count)
+        object.__setattr__(self, "index", int(self.index))
 
-@dataclass
+
+@dataclass(frozen=True)
 class SpectrumSequence:
     """An ordered list of cycles from a stress history, preserving the
     order required by load-interaction (retardation) models.
@@ -188,9 +228,105 @@ class SpectrumSequence:
     binning or other reductions elsewhere cannot move it.
     """
 
-    cycles: list
+    cycles: tuple[OrderedCycle, ...]
     peak_stress: float
     dropped_compressive: float
+
+    def __post_init__(self):
+        if type(self.cycles) not in (list, tuple):
+            raise TypeError(
+                "direct sequence construction requires an exact built-in list "
+                "or tuple; use from_cycles for other iterables"
+            )
+        if len(self.cycles) > MAX_ORDERED_CYCLES:
+            raise ValueError(f"sequence exceeds {MAX_ORDERED_CYCLES:,} ordered cycles")
+        cycles = tuple(self.cycles)
+        if len(cycles) > MAX_ORDERED_CYCLES:
+            raise ValueError(f"sequence exceeds {MAX_ORDERED_CYCLES:,} ordered cycles")
+        if not cycles:
+            raise ValueError("sequence has no cycles")
+        if not all(isinstance(cycle, OrderedCycle) for cycle in cycles):
+            raise TypeError("cycles must contain only OrderedCycle values")
+        expected = tuple(range(len(cycles)))
+        actual = tuple(cycle.index for cycle in cycles)
+        if actual != expected:
+            raise ValueError("ordered cycle indices must be contiguous and in order")
+
+        peak_stress = _finite_real(self.peak_stress, "peak_stress")
+        dropped = _finite_real(self.dropped_compressive, "dropped_compressive")
+        if dropped < 0.0:
+            raise ValueError("dropped_compressive must be non-negative")
+        cycle_peak = max(
+            cycle.delta_sigma / (1.0 - cycle.stress_ratio) for cycle in cycles
+        )
+        if peak_stress < cycle_peak:
+            raise ValueError("peak_stress cannot be below a cycle peak")
+        object.__setattr__(self, "cycles", cycles)
+        object.__setattr__(self, "peak_stress", peak_stress)
+        object.__setattr__(self, "dropped_compressive", dropped)
+
+    @classmethod
+    def from_cycles(cls, cycles: Iterable[OrderedCycle | Mapping]):
+        """Build an immutable ordered mission sequence.
+
+        Each item is either an :class:`OrderedCycle` or a mapping with the
+        exact keys ``delta_sigma``, ``stress_ratio`` and optional ``count``.
+        Items are re-indexed in encounter order and are never sorted or
+        merged. ``count`` is restricted to a full or residual half cycle;
+        repeated physical cycles must be listed explicitly so crack growth
+        and inspection checkpoints retain cycle-by-cycle meaning.
+        """
+        if isinstance(cycles, (str, bytes, Mapping)):
+            raise TypeError("cycles must be an iterable of cycle records")
+        try:
+            iterator = iter(cycles)
+        except TypeError as exc:
+            raise TypeError("cycles must be an iterable of cycle records") from exc
+
+        ordered = []
+        allowed = {"delta_sigma", "stress_ratio", "count"}
+        required = {"delta_sigma", "stress_ratio"}
+        for index, item in enumerate(iterator):
+            if index >= MAX_ORDERED_CYCLES:
+                raise ValueError(
+                    f"sequence exceeds {MAX_ORDERED_CYCLES:,} ordered cycles"
+                )
+            if isinstance(item, OrderedCycle):
+                delta_sigma = item.delta_sigma
+                stress_ratio = item.stress_ratio
+                count = item.count
+            elif isinstance(item, Mapping):
+                keys = set(item)
+                missing = required - keys
+                extra = keys - allowed
+                if missing:
+                    raise ValueError(f"ordered cycle is missing keys {sorted(missing)}")
+                if extra:
+                    raise ValueError(
+                        f"ordered cycle has unexpected keys {sorted(extra)}"
+                    )
+                delta_sigma = item["delta_sigma"]
+                stress_ratio = item["stress_ratio"]
+                count = item.get("count", 1.0)
+            else:
+                raise TypeError("ordered cycle must be an OrderedCycle or mapping")
+            ordered.append(OrderedCycle(delta_sigma, stress_ratio, count, index))
+
+        if not ordered:
+            raise ValueError("sequence has no cycles")
+        peak = max(cycle.delta_sigma / (1.0 - cycle.stress_ratio) for cycle in ordered)
+        return cls(tuple(ordered), peak, 0.0)
+
+    def to_cycles(self):
+        """Return a JSON/YAML-safe ordered representation."""
+        return [
+            {
+                "delta_sigma": cycle.delta_sigma,
+                "stress_ratio": cycle.stress_ratio,
+                "count": cycle.count,
+            }
+            for cycle in self.cycles
+        ]
 
     @classmethod
     def from_history(cls, history):
@@ -214,16 +350,17 @@ class SpectrumSequence:
                 continue
             eff_min = max(s_min, 0.0)
             r = eff_min / s_max
-            cycles.append(OrderedCycle(
-                delta_sigma=s_max - eff_min,
-                stress_ratio=r,
-                count=count,
-                index=len(cycles),
-            ))
+            cycles.append(
+                OrderedCycle(
+                    delta_sigma=s_max - eff_min,
+                    stress_ratio=r,
+                    count=count,
+                    index=len(cycles),
+                )
+            )
         if not cycles:
             raise ValueError("history contains no damaging cycles")
-        return cls(cycles=cycles, peak_stress=peak,
-                   dropped_compressive=dropped)
+        return cls(cycles=tuple(cycles), peak_stress=peak, dropped_compressive=dropped)
 
     @classmethod
     def from_history_ordered(cls, history):
@@ -249,16 +386,17 @@ class SpectrumSequence:
                 continue
             eff_min = max(s_min, 0.0)
             r = eff_min / s_max if s_max > 0 else 0.0
-            cycles.append(OrderedCycle(
-                delta_sigma=s_max - eff_min,
-                stress_ratio=r,
-                count=0.5,
-                index=len(cycles),
-            ))
+            cycles.append(
+                OrderedCycle(
+                    delta_sigma=s_max - eff_min,
+                    stress_ratio=r,
+                    count=0.5,
+                    index=len(cycles),
+                )
+            )
         if not cycles:
             raise ValueError("history contains no damaging cycles")
-        return cls(cycles=cycles, peak_stress=peak,
-                   dropped_compressive=dropped)
+        return cls(cycles=tuple(cycles), peak_stress=peak, dropped_compressive=dropped)
 
     @property
     def n_cycles(self):
