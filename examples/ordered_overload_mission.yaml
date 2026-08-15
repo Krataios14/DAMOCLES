@@ -1,0 +1,59 @@
+name: ordered overload mission
+
+variables:
+  initial_flaw:
+    dist: lognormal
+    mean: 1.0e-3
+    cov: 0.08
+  stress_scale:
+    dist: normal
+    mean: 1.0
+    std: 0.02
+  toughness:
+    dist: normal
+    mean: 100.0
+    std: 2.0
+
+geometry:
+  type: through
+
+growth:
+  law: paris
+  c: 1.0e-10
+  m: 3.0
+
+# One ordered mission block. Every physical cycle is a separate record;
+# entries are repeated in this exact order and are never sorted or merged.
+spectrum:
+  type: ordered
+  cycles:
+    - {delta_sigma: 1500.0, stress_ratio: 0.0}
+    - {delta_sigma: 1000.0, stress_ratio: 0.0}
+    - {delta_sigma: 1000.0, stress_ratio: 0.0}
+    - {delta_sigma: 1000.0, stress_ratio: 0.0}
+    - {delta_sigma: 1000.0, stress_ratio: 0.0}
+    - {delta_sigma: 1000.0, stress_ratio: 0.0}
+    - {delta_sigma: 1000.0, stress_ratio: 0.0}
+    - {delta_sigma: 1000.0, stress_ratio: 0.0}
+    - {delta_sigma: 1000.0, stress_ratio: 0.0}
+    - {delta_sigma: 1000.0, stress_ratio: 0.0}
+
+retardation:
+  model: willenborg
+  yield_strength: 1000.0
+  max_cycles: 100.0
+  max_blocks: 10
+  max_work: 100000
+
+service_cycles: 100.0
+
+inspection:
+  times: [25.0, 50.0, 75.0]
+  pod_a50: 2.0e-3
+  pod_a90: 4.0e-3
+
+analysis:
+  samples: 1000
+  method: lhs
+  seed: 7
+  target_pof: 0.1
