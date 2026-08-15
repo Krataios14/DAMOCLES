@@ -117,9 +117,22 @@ damage-equivalent range (sum n dS^p conserved, p close to the growth
 exponent), and never alter the true block peak stress that governs
 fracture.
 
-Retardation (e.g. Willenborg) is deliberately out of scope for now: it
-would force cycle-by-cycle integration and its parameters are rarely
-known at the fleet statistics level this tool targets.
+Retardation (e.g. Willenborg) is available as an opt-in addition to
+spectrum loading via ``grow_spectrum_retarded``.  The Willenborg model
+(1971) tracks the maximum stress intensity factor K_max encountered so
+far and computes an Irwin plastic zone radius r_p = (1/pi) (K_max /
+sigma_y)^2.  When the crack tip is inside the plastic zone (a < 2 r_p),
+the effective stress intensity range is reduced:
+
+dK_eff = dK * (1 - f_R),  f_R = r_p / (2 (a + r_p))
+
+Once the crack grows beyond 2 r_p, retardation deactivates.  Only cycles
+whose delta_sigma exceeds the baseline (minimum peak in the sequence)
+trigger a new overload and update the retardation state.  This ensures
+that pure constant-amplitude loading produces no artificial retardation.
+
+The integration is cycle-by-cycle (not grid-based) because the retardation
+factor changes with each cycle.  Life is returned in cycles, not blocks.
 
 ## 7. Inspections
 
@@ -177,7 +190,8 @@ default to the Change 1 tables.
 ## 11. Assumptions and scope
 
 - LEFM throughout; no plasticity correction, no initiation life.
-- Constant amplitude or repeating-block loading; no retardation.
+- Constant amplitude or repeating-block loading; retardation available
+  via ``grow_spectrum_retarded`` (Willenborg model).
 - A single dominant crack per part; no continuing damage or multi-site
   interaction.
 - Detected cracks leave the fleet (repair is not modelled as a renewal

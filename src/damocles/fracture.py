@@ -261,6 +261,159 @@ def grow_spectrum(a0, spectrum, geometry, law, k_ic, stress_scale=1.0,
     return _integrate(a0, a_c, rate_of, eval_blocks, n_grid, chunk_size)
 
 
+def grow_spectrum_retarded(a0, sequence, geometry, law, k_ic, s_yield,
+                           stress_scale=1.0, max_cycles=1e8,
+                           max_blocks=10_000, chunk_size=100_000):
+    """Integrate crack growth under a load spectrum with Willenborg
+    overload retardation.
+
+    Parameters
+    ----------
+    a0 : array-like
+        Initial crack sizes [m], shape (n_samples,).
+    sequence : SpectrumSequence
+        Ordered cycle sequence from ``SpectrumSequence.from_history_ordered``.
+        The ordered method must be used (not ``from_history`` which uses
+        rainflow counting) to preserve the correct cycle order for
+        load-interaction models.
+    geometry : Geometry
+        Stress intensity geometry factor Y(a).
+    law : growth law
+        Object with ``rate(dk, stress_ratio, a, kc)`` method.
+    k_ic : array-like
+        Fracture toughness [MPa sqrt(m)], shape (n_samples,) or scalar.
+    s_yield : float
+        Material yield strength [MPa] for the plastic zone estimate.
+    stress_scale : array-like or float
+        Per-sample stress multiplier, shape (n_samples,) or scalar.
+    max_cycles : float
+        Integration stops when accumulated cycles reach this value.
+    max_blocks : int
+        Maximum number of spectrum repetitions before giving up.
+    chunk_size : int
+        Samples per chunk (memory control).
+
+    Returns
+    -------
+    LifeResult
+        ``cycles_to_failure`` in CYCLES (not blocks).  Infinite where
+        no growth occurred.  ``a_critical`` is the critical size for
+        the highest peak in the sequence.
+    """
+    a0 = np.atleast_1d(np.asarray(a0, dtype=float))
+    n = a0.shape[0]
+    k_ic = np.broadcast_to(np.asarray(k_ic, dtype=float), (n,))
+    stress_scale = np.broadcast_to(np.asarray(stress_scale, dtype=float), (n,))
+    if np.any(a0 <= 0):
+        raise ValueError("initial crack sizes must be positive")
+    if not sequence.cycles:
+        raise ValueError("sequence has no cycles")
+
+    # fracture governed by the true block peak
+    a_c = critical_size(geometry, sequence.peak_stress * stress_scale, k_ic)
+
+    # baseline delta_sigma: the minimum peak in the sequence.
+    # Only cycles exceeding this baseline trigger overload retardation.
+    baseline_ds = min(c.delta_sigma for c in sequence.cycles)
+
+    n_f = np.full(n, np.inf)
+
+    for start in range(0, n, chunk_size):
+        sl = slice(start, min(start + chunk_size, n))
+        end = min(start + chunk_size, n)
+        m = end - start
+
+        a = a0[sl].copy()
+        kc = k_ic[sl]
+        scale = stress_scale[sl]
+
+        from .retardation import (init_state, plastic_zone_radius,
+                                  retardation_factor, effective_dk)
+
+        # initialise retardation state: no overload yet
+        state = init_state(np.zeros(m), s_yield)
+
+        chunk_failed = np.zeros(m, dtype=bool)
+        chunk_cycles = np.zeros(m)
+
+        block = 0
+        while not chunk_failed.all() and block < max_blocks:
+            block += 1
+
+            for cyc in sequence.cycles:
+                still = ~chunk_failed
+                if not still.any():
+                    break
+
+                y_a = geometry.y(a[still])
+                root = np.sqrt(np.pi * a[still])
+                dk = y_a * scale[still] * cyc.delta_sigma * root
+                k_max_cyc = dk / (1.0 - cyc.stress_ratio)
+
+                # overload detection: only cycles exceeding the baseline
+                # delta_sigma trigger retardation
+                is_overload = cyc.delta_sigma > baseline_ds
+
+                # compute retardation factor from current state
+                # (before updating for any new overload this cycle)
+                rp = state.r_p[still]
+                f_r = retardation_factor(a[still], rp, state.active[still])
+
+                # check if crack has outgrown the retardation zone
+                outgrown = state.active[still] & (a[still] > 2.0 * rp)
+                if outgrown.any():
+                    idx = np.where(still)[0][outgrown]
+                    state.active[idx] = False
+                    f_r[outgrown] = 0.0
+
+                # update state if this cycle is an overload
+                if is_overload:
+                    still_idx = np.where(still)[0]
+                    overload_local = k_max_cyc > state.k_max[still]
+                    if overload_local.any():
+                        oidx = still_idx[overload_local]
+                        state.k_max[oidx] = k_max_cyc[overload_local]
+                        state.r_p[oidx] = plastic_zone_radius(
+                            state.k_max[oidx], s_yield)
+                        state.active[oidx] = True
+
+                # effective ranges
+                dk_eff = effective_dk(dk, f_r)
+
+                # growth rate
+                v = law.rate(dk_eff, cyc.stress_ratio,
+                             a=a[still], kc=kc[still])
+
+                da = cyc.count * v
+                grew = da > 0.0
+
+                if grew.any():
+                    idx = np.where(still)[0][grew]
+                    a[idx] += da[grew]
+                    chunk_cycles[idx] += cyc.count
+
+                # check for fracture: the crack fractures when the current
+                # cycle's K_max reaches K_IC
+                s_max_cyc = cyc.delta_sigma / (1.0 - cyc.stress_ratio)
+                ac_cyc = critical_size(geometry, s_max_cyc * scale, kc)
+                newly_failed = still & (a >= ac_cyc)
+                if newly_failed.any():
+                    failed_idx = np.where(newly_failed)[0]
+                    chunk_failed[failed_idx] = True
+                    chunk_cycles[failed_idx] = np.minimum(
+                        chunk_cycles[failed_idx], max_cycles)
+
+                # check for max cycles exceeded
+                over = chunk_cycles >= max_cycles
+                if over.any():
+                    chunk_failed[over] = True
+
+        n_f[sl] = np.where(chunk_failed, chunk_cycles, np.inf)
+
+    return LifeResult(cycles_to_failure=n_f, a_critical=a_c,
+                      eval_cycles=None, a_at=None)
+
+
 def _integrate(a0, a_c, rate_of, eval_steps, n_grid, chunk_size):
     n = a0.shape[0]
     n_f = np.empty(n)

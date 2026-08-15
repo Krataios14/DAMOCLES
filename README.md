@@ -216,10 +216,11 @@ alloys you have not tested.
 
 ## Limitations, stated plainly
 
-- LEFM with no load interaction: constant amplitude or repeating-block
-  spectra, no retardation. Order effects within a block are exactly
-  irrelevant under this assumption; overload retardation is not
-  modelled at all.
+- LEFM with no load interaction by default: constant amplitude or
+  repeating-block spectra, no retardation. Overload retardation
+  (Willenborg model) is available as an opt-in via
+  ``grow_spectrum_retarded``; the existing ``grow_spectrum`` is
+  unchanged.
 - One dominant crack per part. No multi-site damage, no continuing
   damage after repair (detected parts leave the fleet).
 - The AC 33.14 module covers the Appendix 1 ring disk class of problem:
@@ -249,7 +250,8 @@ src/damocles/reliability.py   pof estimation, exact CIs, importance sampling
 src/damocles/fracture.py      growth laws, geometry factors, life integration
 src/damocles/newman_raju.py   NASA TM-85793 surface and corner crack solutions
 src/damocles/nasgro.py        Forman-Mettu equation with Newman closure
-src/damocles/spectrum.py      ASTM E1049 rainflow, spectrum blocks
+src/damocles/spectrum.py      ASTM E1049 rainflow, spectrum blocks, ordered sequences
+src/damocles/retardation.py   Willenborg overload retardation model
 src/damocles/inspection.py    POD curves, inspection plans, risk arithmetic
 src/damocles/ac3314.py        AC 33.14-1 hard alpha assessment + calibration
 src/damocles/materials.py     cited material database (data/materials.json)
@@ -260,7 +262,7 @@ src/damocles/cli.py           command line entry point
 docs/theory.md                the equations and assumptions
 docs/verification.md          claim -> reference -> test matrix
 examples/                     disk bore, skin panel, AC test case, coin
-tests/                        112 tests, all against external references
+tests/                        132 tests, all against external references
 ```
 
 The original repository was a high school Monte Carlo toy that dropped
@@ -274,7 +276,7 @@ checked against quadrature; everything else was torn down and rebuilt.
 python -m pytest -q
 ```
 
-112 tests, a few seconds. The verification matrix in
+132 tests, a few seconds. The verification matrix in
 `docs/verification.md` maps each capability to its reference and its
 test.
 
@@ -297,6 +299,10 @@ test.
   Int. J. Fracture 24 (1984). The closure function.
 - Leverant, McClung, Millwater, Enright et al. Turbine Rotor Material
   Design. DOT/FAA/AR-00/64, 2000. DARWIN's analysis of the AC test case.
+- Willenborg, Engle, Wood. A Crack Growth Retardation Spectrum Model.
+  AFFDL-TM-71-1-FBR, 1971. The overload retardation model.
+- Broek, D. Elementary Engineering Fracture Mechanics, 4th ed.
+  Springer, 1986. Chapter 12 reviews retardation models.
 - ASTM E1049-85, Standard Practices for Cycle Counting in Fatigue
   Analysis. The rainflow rules and the worked example used as an
   acceptance test.

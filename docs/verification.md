@@ -31,6 +31,7 @@ commit (CI runs the suite on Linux and Windows, Python 3.10 to 3.14).
 | AC 33.14-1 stress field | Analytic rotating-annulus + Lame field reproduces the AC's bore stress (572.4 MPa) within 4 MPa; zone volumes match Table A1-1 | `test_ac3314.py::test_hoop_stress_matches_ac_contours`, `test_zone_volumes_match_ac_table_a1_1` |
 | Quadrature vs Monte Carlo | The closed-form risk integral and the sampling engine agree within 2% on the inspected test case | `test_ac3314.py::test_monte_carlo_agrees_with_quadrature` |
 | Numerical implementation invariants | Chunked integration bit-identical to single pass; binning conserves cycle counts | `test_fracture.py::test_chunking_is_invisible`, `test_spectrum.py::test_binned_conserves_counts` |
+| Willenborg overload retardation | CA agreement (no artificial retardation); OL increases life; OL ordering matters; retardation ratio > 1.5 | `test_retardation.py::TestConstantAmplitudeAgreement`, `TestOverloadDelaysGrowth`, `TestOrderMatters`, `TestReferenceValidation` |
 | Geometric reliability regression | Original coin-through-grating problem against 1-D quadrature | `test_coin_grating.py::test_engine_matches_quadrature` |
 
 Run it yourself:
