@@ -264,14 +264,13 @@ def grow_spectrum(a0, spectrum, geometry, law, k_ic, stress_scale=1.0,
 def grow_spectrum_retarded(a0, sequence, geometry, law, k_ic, s_yield,
                            stress_scale=1.0, max_cycles=1e8,
                            max_blocks=10_000, chunk_size=100_000):
-    """Integrate crack growth under a load spectrum with Willenborg
-    overload retardation.
+    """Integrate ordered spectrum growth with Willenborg retardation.
 
-    An overload is detected when a cycle's stress range exceeds the
-    minimum stress range in the spectrum.  The maximum K_max seen for
-    that overload sets the plastic zone radius via the Irwin estimate.
-    Retardation is active while the crack tip remains inside the zone
-    (``a < a_OL + 2 * r_p``).
+    Each cycle's unretarded plastic-zone boundary is compared with the
+    controlling boundary left by earlier loads.  A cycle that extends the
+    boundary is applied without retardation and becomes the new controlling
+    load.  Otherwise, equations 5.2.3 through 5.2.6 of the AFGROW Damage
+    Tolerance Design Handbook are used to obtain ``K_R`` and ``R_eff``.
 
     Parameters
     ----------
@@ -289,7 +288,8 @@ def grow_spectrum_retarded(a0, sequence, geometry, law, k_ic, s_yield,
     k_ic : array-like
         Fracture toughness [MPa sqrt(m)], shape (n_samples,) or scalar.
     s_yield : float
-        Material yield strength [MPa] for the plastic zone estimate.
+        Material yield strength [MPa] for the plane-stress plastic-zone
+        estimate.
     stress_scale : array-like or float
         Per-sample stress multiplier, shape (n_samples,) or scalar.
     max_cycles : float
@@ -305,26 +305,36 @@ def grow_spectrum_retarded(a0, sequence, geometry, law, k_ic, s_yield,
     -------
     LifeResult
         ``cycles_to_failure`` in CYCLES (not blocks).  Infinite where
-        no growth occurred or ``max_cycles`` was reached (run-out).
+        ``max_cycles`` or ``max_blocks`` was reached without fracture.
         ``a_critical`` is the critical size for the highest peak in
         the sequence.
+
+    Notes
+    -----
+    The zero-effective-R convention is used when subtracting ``K_R`` would
+    produce a negative effective stress ratio.  See
+    :mod:`damocles.retardation` for the equations and validity limits.
     """
     a0 = np.atleast_1d(np.asarray(a0, dtype=float))
     n = a0.shape[0]
+    if n == 0:
+        raise ValueError("at least one initial crack size is required")
     k_ic = np.broadcast_to(np.asarray(k_ic, dtype=float), (n,))
     stress_scale = np.broadcast_to(np.asarray(stress_scale, dtype=float), (n,))
     if np.any(a0 <= 0):
         raise ValueError("initial crack sizes must be positive")
     if not sequence.cycles:
         raise ValueError("sequence has no cycles")
+    if not np.isfinite(s_yield) or s_yield <= 0.0:
+        raise ValueError("s_yield must be finite and positive")
+    if max_cycles <= 0:
+        raise ValueError("max_cycles must be positive")
+    if max_blocks <= 0:
+        raise ValueError("max_blocks must be positive")
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be positive")
 
     a_c = critical_size(geometry, sequence.peak_stress * stress_scale, k_ic)
-
-    # Overload threshold: minimum delta_sigma in the sequence.
-    # Only cycles exceeding this threshold trigger overload retardation.
-    # This ensures pure constant-amplitude loading (no stress excursions)
-    # produces no retardation, matching the unretarded baseline.
-    baseline_ds = min(c.delta_sigma for c in sequence.cycles)
 
     n_f = np.full(n, np.inf)
 
@@ -336,8 +346,9 @@ def grow_spectrum_retarded(a0, sequence, geometry, law, k_ic, s_yield,
         kc = k_ic[start:end]
         scale = stress_scale[start:end]
 
-        from .retardation import (init_state, plastic_zone_radius,
-                                  retardation_factor, effective_kr)
+        from .retardation import (effective_kr, init_state,
+                                  plastic_zone_radius,
+                                  residual_stress_intensity)
 
         state = init_state(m)
 
@@ -358,10 +369,6 @@ def grow_spectrum_retarded(a0, sequence, geometry, law, k_ic, s_yield,
                 kc_sub = kc[alive]
                 sc_sub = scale[alive]
                 alive_idx = np.where(alive)[0]
-
-                y_a = geometry.y(a_sub)
-                root = np.sqrt(np.pi * a_sub)
-                dk = y_a * sc_sub * cyc.delta_sigma * root
 
                 # fracture check BEFORE processing this cycle
                 s_max_cyc = cyc.delta_sigma / (1.0 - cyc.stress_ratio)
@@ -386,50 +393,55 @@ def grow_spectrum_retarded(a0, sequence, geometry, law, k_ic, s_yield,
                 dk2 = y_a2 * sc2 * cyc.delta_sigma * root2
                 k_max2 = dk2 / (1.0 - cyc.stress_ratio)
 
-                # overload detection: only cycles exceeding the
-                # baseline threshold trigger retardation
-                is_overload = cyc.delta_sigma > baseline_ds
+                # A load controls only when its unretarded plastic zone
+                # extends beyond the boundary left by earlier loads.  This
+                # is the zone comparison in the AFGROW cycle-by-cycle
+                # procedure and needs no arbitrary overload threshold.
+                r_p2 = plastic_zone_radius(k_max2, s_yield)
+                current_boundary = a2 + r_p2
+                stored_boundary = (state.a_overload[alive2] +
+                                   state.r_p[alive2])
+                new_zone = (~state.active[alive2] |
+                            (current_boundary > stored_boundary))
+                contained = state.active[alive2] & ~new_zone
 
-                # deactivate samples whose crack left the zone
-                outgrown = (state.active[alive2] &
-                            (a2 >= state.a_overload[alive2] +
-                             2.0 * state.r_p[alive2]))
-                if outgrown.any():
-                    state.active[alive2_idx[outgrown]] = False
+                k_r = residual_stress_intensity(
+                    a2, k_max2, state.k_max_ol[alive2],
+                    state.r_p[alive2], state.a_overload[alive2], contained)
+                dk_eff, r_eff = effective_kr(dk2, cyc.stress_ratio, k_r)
 
-                # retardation factor (before overload update so the
-                # overload cycle itself is unretarded)
-                f_r = retardation_factor(
-                    a2, state.r_p[alive2],
-                    state.a_overload[alive2], state.active[alive2])
-
-                # effective K with Willenborg residual
-                dk_eff, r_eff = effective_kr(
-                    dk2, state.k_max_ol[alive2], cyc.stress_ratio, f_r)
+                # Store the crack position at the start of a controlling
+                # cycle, before that cycle's growth increment is applied.
+                if new_zone.any():
+                    nidx = alive2_idx[new_zone]
+                    state.k_max_ol[nidx] = k_max2[new_zone]
+                    state.r_p[nidx] = r_p2[new_zone]
+                    state.a_overload[nidx] = a2[new_zone]
+                    state.active[nidx] = True
 
                 # growth rate
+                sample_indices = start + alive2_idx
                 v = law.rate(dk_eff, r_eff, a=a2, kc=kc2,
-                             sample_slice=slice(start, end))
+                             sample_slice=sample_indices)
 
                 da = cyc.count * v
                 a[alive2_idx] += da
 
                 # always count every cycle toward elapsed life
-                chunk_cycles[alive2] += cyc.count
+                chunk_cycles[alive2_idx] += cyc.count
 
-                # overload update: new maximum K_max for this sample
-                if is_overload:
-                    new_max = k_max2 > state.k_max_ol[alive2]
-                    if new_max.any():
-                        nidx = alive2_idx[new_max]
-                        state.k_max_ol[nidx] = k_max2[new_max]
-                        state.r_p[nidx] = plastic_zone_radius(
-                            k_max2[new_max], s_yield)
-                        state.a_overload[nidx] = a[nidx]
-                        state.active[nidx] = True
+                # A crack that crosses the current cycle's critical size
+                # fails at the end of this cycle, rather than waiting for the
+                # next cycle in the sequence.
+                ac2 = critical_size(geometry, s_max_cyc * sc2, kc2)
+                newly_fractured = a[alive2_idx] >= ac2
+                if newly_fractured.any():
+                    fidx = alive2_idx[newly_fractured]
+                    chunk_done[fidx] = True
+                    chunk_failed[fidx] = True
 
                 # run-out at max_cycles (not a fracture)
-                over = chunk_cycles >= max_cycles
+                over = (~chunk_done) & (chunk_cycles >= max_cycles)
                 if over.any():
                     chunk_done[over] = True
 

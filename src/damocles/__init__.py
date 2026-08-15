@@ -19,7 +19,7 @@ from .fracture import (
 from .spectrum import CycleClass, OrderedCycle, Spectrum, SpectrumSequence, rainflow
 from .retardation import (
     WillenborgState, init_state, plastic_zone_radius,
-    retardation_factor, effective_kr,
+    residual_stress_intensity, effective_kr,
 )
 from .inspection import InspectionPlan, PODCurve, apply_plan, sweep_intervals
 from .materials import available as available_materials

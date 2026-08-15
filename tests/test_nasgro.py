@@ -58,6 +58,30 @@ def test_stress_ratio_accelerates_growth():
     assert law.rate(dk, 0.7)[0] > law.rate(dk, 0.5)[0]
 
 
+def test_vectorized_stress_ratios_match_scalar_evaluation():
+    law = NasgroLaw(**LAW_2024)
+    dk = np.array([5.0, 10.0, 20.0])
+    stress_ratio = np.array([0.0, 0.3, 0.7])
+    vectorized = law.rate(dk, stress_ratio)
+    scalar = np.array([
+        law.rate(np.array([value]), ratio)[0]
+        for value, ratio in zip(dk, stress_ratio)
+    ])
+    np.testing.assert_allclose(vectorized, scalar, rtol=1e-14)
+
+
+def test_vectorized_thresholds_match_scalar_evaluation():
+    law = NasgroLaw(**LAW_2024)
+    a = np.array([1e-5, 1e-4, 1e-3])
+    stress_ratio = np.array([0.0, 0.3, 0.7])
+    vectorized = law.threshold(stress_ratio, a)
+    scalar = np.array([
+        law.threshold(ratio, crack)
+        for ratio, crack in zip(stress_ratio, a)
+    ])
+    np.testing.assert_allclose(vectorized, scalar, rtol=1e-14)
+
+
 def test_cross_check_against_fcgd_spline():
     # DOT/FAA/AR-05/15 table 2(a), R = 0 spline points for 2024-T3:
     # da/dN 3.2e-6 at dK 8.5678; 1.0e-5 at 14.4607; 1.0e-4 at 28.4466.

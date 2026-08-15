@@ -41,18 +41,27 @@ def newman_opening_function(stress_ratio, alpha, smax_sigma0):
     alpha       : constraint factor, 1 = plane stress to 3 = plane strain
     smax_sigma0 : ratio of peak stress to flow stress, 0.3 typical
     """
-    r = float(stress_ratio)
+    r = np.asarray(stress_ratio, dtype=float)
+    if np.any(r < -2.0):
+        raise ValueError("Newman's f is defined for R >= -2")
     a0 = (0.825 - 0.34 * alpha + 0.05 * alpha**2) * \
         np.cos(np.pi / 2.0 * smax_sigma0) ** (1.0 / alpha)
     a1 = (0.415 - 0.071 * alpha) * smax_sigma0
     a3 = 2.0 * a0 + a1 - 1.0
     a2 = 1.0 - a0 - a1 - a3
-    if r >= 0.0:
-        poly = a0 + a1 * r + a2 * r**2 + a3 * r**3
-        return max(r, poly), a0
-    if r >= -2.0:
-        return a0 + a1 * r, a0
-    raise ValueError("Newman's f is defined for R >= -2")
+    poly = a0 + a1 * r + a2 * r**2 + a3 * r**3
+    f = np.where(r >= 0.0, np.maximum(r, poly), a0 + a1 * r)
+    return (float(f) if f.ndim == 0 else f), a0
+
+
+def _align_sample_axis(values, target):
+    """Align a per-sample vector with a ``(samples, grid)`` target."""
+    values = np.asarray(values, dtype=float)
+    target = np.asarray(target)
+    if (target.ndim == 2 and values.ndim == 1 and
+            values.shape[0] == target.shape[0]):
+        return values[:, None]
+    return values
 
 
 class NasgroLaw:
@@ -94,9 +103,10 @@ class NasgroLaw:
         crack at R = 0."""
         if self.dk1 <= 0.0:
             return 0.0
-        r = float(np.clip(stress_ratio, -2.0, 0.95))
+        target = np.asarray(a) if a is not None else np.asarray(stress_ratio)
+        r = np.clip(_align_sample_axis(stress_ratio, target), -2.0, 0.95)
         f, a0_coef = newman_opening_function(r, self.alpha, self.smax_sigma0)
-        cth = self.cth_plus if r >= 0.0 else self.cth_minus
+        cth = np.where(r >= 0.0, self.cth_plus, self.cth_minus)
         spread = ((1.0 - f) / ((1.0 - a0_coef) * (1.0 - r))) ** (1.0 + cth * r)
         if a is None:
             small_crack = 1.0
@@ -107,7 +117,7 @@ class NasgroLaw:
 
     def rate(self, dk, stress_ratio=0.0, a=None, kc=None, sample_slice=None):
         dk = np.asarray(dk, dtype=float)
-        r = float(np.clip(stress_ratio, -2.0, 0.95))
+        r = np.clip(_align_sample_axis(stress_ratio, dk), -2.0, 0.95)
         f, _ = newman_opening_function(r, self.alpha, self.smax_sigma0)
 
         c = self._c_for(dk, sample_slice)
@@ -121,8 +131,9 @@ class NasgroLaw:
 
         kc_eff = kc if kc is not None else self.kc
         if kc_eff is not None:
+            kc_eff = _align_sample_axis(kc_eff, dk)
             k_max = dk / (1.0 - r)
-            margin = 1.0 - k_max / np.asarray(kc_eff, dtype=float)
+            margin = 1.0 - k_max / kc_eff
             stable = margin > 1e-9
             # rate diverges at instability; the life integrand 1/v -> 0
             v = np.where(stable,
