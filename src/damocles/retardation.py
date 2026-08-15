@@ -1,9 +1,37 @@
 """Overload-retardation models for spectrum crack growth.
 
 Implements the Willenborg (1971) retardation model as an opt-in
-addition to the no-interaction spectrum integration.  The present
-no-interaction calculation remains the default; retardation is enabled
-by calling ``grow_spectrum_retarded`` instead of ``grow_spectrum``.
+addition to the no-interaction spectrum integration.
+
+The Willenborg model tracks the maximum stress intensity factor K_max
+encountered so far.  When a new K_max is set (an overload), the Irwin
+plastic zone radius is computed and the crack length at overload is
+recorded.  Retardation continues while the current crack tip lies inside
+the overload plastic zone, i.e. while
+
+    a < a_OL + 2 * r_p          (plane stress)
+
+where a_OL is the crack length at the time of overload and
+
+    r_p = (1 / pi) * (K_max_OL / sigma_y)^2
+
+is the Irwin estimate.
+
+Within the zone, a residual compressive stress intensity K_R is
+computed:
+
+    K_R = f_R * K_max_OL,   f_R = r_p / (2 * (a - a_OL + r_p))
+
+and subtracted from both K_max and K_min of every subsequent cycle:
+
+    K_max_eff = K_max - K_R
+    K_min_eff = max(K_min - K_R, 0)
+
+Validity limits
+---------------
+- Plane stress assumed throughout (conservative for most metals).
+- The Irwin zone estimate underestimates r_p for large overloads.
+- The model does not account for crack closure.
 
 References
 ----------
@@ -11,11 +39,7 @@ Willenborg, J.D., Engle, R.M. and Wood, H.A., "A Crack Growth
 Retardation Spectrum Model," AFFDL-TM-71-1-FBR, 1971.
 
 Broek, D., "Elementary Engineering Fracture Mechanics," 4th ed.,
-Springer, 1986.  Chapter 12 reviews retardation models including
-Willenborg.
-
-Forman, R.G. and Shivakumar, V., "Growth Rate Equation for
-Part-through Crack in Residual Stress Fields," NASA TM-88963, 1986.
+Springer, 1986.  Chapter 12.
 """
 
 from __future__ import annotations
@@ -31,109 +55,81 @@ class WillenborgState:
 
     Attributes
     ----------
-    k_max : np.ndarray
-        Maximum stress intensity factor encountered so far [MPa sqrt(m)].
+    k_max_ol : np.ndarray
+        K_max at the time of the most recent overload [MPa sqrt(m)].
+        Used for the residual stress computation K_R = f_R * k_max_ol.
     r_p : np.ndarray
-        Plastic zone radius at the overload, computed from ``k_max``
-        using the Irwin estimate.  Updated when a new maximum is set.
+        Plastic zone radius at the overload [m].
+    a_overload : np.ndarray
+        Crack length at the time of overload [m].
     active : np.ndarray
-        Boolean mask; True where retardation is currently active
-        (crack has not yet grown beyond the overload plastic zone).
+        True where retardation is currently active.
     """
 
-    k_max: np.ndarray
+    k_max_ol: np.ndarray
     r_p: np.ndarray
+    a_overload: np.ndarray
     active: np.ndarray
 
 
 def plastic_zone_radius(k_max, s_yield):
-    """Irwin plastic zone radius: r_p = (1/pi) * (K_max / sigma_y)^2.
+    """Irwin plastic zone radius (plane stress).
 
-    Parameters
-    ----------
-    k_max : array-like
-        Maximum stress intensity factor [MPa sqrt(m)].
-    s_yield : float
-        Material yield strength [MPa].
-
-    Returns
-    -------
-    np.ndarray
-        Plastic zone radius [m].
+    r_p = (1 / pi) * (K / sigma_y)^2
     """
     k_max = np.asarray(k_max, dtype=float)
     return (1.0 / np.pi) * (k_max / s_yield) ** 2
 
 
-def init_state(k_max_0, s_yield):
-    """Create initial retardation state from the first cycle's K_max.
-
-    Parameters
-    ----------
-    k_max_0 : array-like
-        Stress intensity factor from the first cycle [MPa sqrt(m)].
-    s_yield : float
-        Material yield strength [MPa].
-
-    Returns
-    -------
-    WillenborgState
-    """
-    k = np.asarray(k_max_0, dtype=float)
-    rp = plastic_zone_radius(k, s_yield)
-    # The first cycle establishes the baseline; retardation activates
-    # only when a *subsequent* cycle exceeds this baseline K_max.
-    return WillenborgState(k_max=k.copy(), r_p=rp.copy(),
-                           active=np.zeros_like(k, dtype=bool))
+def init_state(n):
+    """Create initial retardation state with no overload recorded."""
+    return WillenborgState(
+        k_max_ol=np.zeros(n),
+        r_p=np.zeros(n),
+        a_overload=np.zeros(n),
+        active=np.zeros(n, dtype=bool),
+    )
 
 
-def retardation_factor(a, r_p, active):
+def retardation_factor(a, r_p, a_overload, active):
     """Willenborg retardation factor f_R.
 
-    ``f_R = r_p / (2 * (a + r_p))``
+    f_R = r_p / (2 * (a - a_OL + r_p))
 
-    When the crack tip has advanced beyond the overload plastic zone
-    (``a > 2 * r_p``), retardation is inactive and ``f_R = 0``.
-
-    Parameters
-    ----------
-    a : np.ndarray
-        Current crack size [m].
-    r_p : np.ndarray
-        Plastic zone radius at the overload [m].
-    active : np.ndarray
-        Boolean mask of samples where retardation is active.
-
-    Returns
-    -------
-    np.ndarray
-        Retardation factor in [0, 0.5].
+    Retardation is active while a < a_OL + 2 * r_p.
     """
     a = np.asarray(a, dtype=float)
     r_p = np.asarray(r_p, dtype=float)
+    a_ol = np.asarray(a_overload, dtype=float)
     f = np.zeros_like(a)
-    inside_zone = active & (a <= 2.0 * r_p)
-    denom = 2.0 * (a + r_p)
+    zone_boundary = a_ol + 2.0 * r_p
+    inside_zone = active & (a < zone_boundary)
+    denom = 2.0 * (a - a_ol + r_p)
     safe = inside_zone & (denom > 0.0)
     f[safe] = r_p[safe] / denom[safe]
     return f
 
 
-def effective_dk(dk, f_r):
-    """Apply retardation to the stress intensity range.
+def effective_kr(dk, k_max_ol, stress_ratio, f_r):
+    """Compute effective K after Willenborg retardation.
 
-    ``dK_eff = dK * (1 - f_R)``
-
-    Parameters
-    ----------
-    dk : np.ndarray
-        Unretarded stress intensity range [MPa sqrt(m)].
-    f_r : np.ndarray
-        Retardation factor from :func:`retardation_factor`.
-
-    Returns
-    -------
-    np.ndarray
-        Effective (retarded) stress intensity range.
+    K_R = f_R * K_max_OL
+    K_max_eff = K_max - K_R
+    K_min_eff = max(K_min - K_R, 0)
     """
-    return np.asarray(dk, dtype=float) * (1.0 - np.asarray(f_r, dtype=float))
+    dk = np.asarray(dk, dtype=float)
+    k_max_ol = np.asarray(k_max_ol, dtype=float)
+    f_r = np.asarray(f_r, dtype=float)
+
+    k_max_cyc = dk / np.maximum(1.0 - stress_ratio, 1e-300)
+    k_min_cyc = k_max_cyc * stress_ratio
+    k_r = f_r * k_max_ol
+
+    k_max_eff = np.maximum(k_max_cyc - k_r, 0.0)
+    k_min_eff = np.maximum(k_min_cyc - k_r, 0.0)
+
+    dk_eff = np.maximum(k_max_eff - k_min_eff, 0.0)
+    with np.errstate(invalid="ignore"):
+        r_eff = np.where(k_max_eff > 0.0, k_min_eff / k_max_eff, 0.0)
+
+    return dk_eff, r_eff

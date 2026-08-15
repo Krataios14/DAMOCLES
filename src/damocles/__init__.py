@@ -17,7 +17,10 @@ from .fracture import (
     grow_spectrum_retarded,
 )
 from .spectrum import CycleClass, OrderedCycle, Spectrum, SpectrumSequence, rainflow
-from .retardation import WillenborgState, plastic_zone_radius, retardation_factor
+from .retardation import (
+    WillenborgState, init_state, plastic_zone_radius,
+    retardation_factor, effective_kr,
+)
 from .inspection import InspectionPlan, PODCurve, apply_plan, sweep_intervals
 from .materials import available as available_materials
 from .materials import get as get_material
