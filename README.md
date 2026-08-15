@@ -16,8 +16,9 @@ probabilistic rotor codes.
 ## What it does
 
 You describe a component as distributions instead of point values:
-initial flaw size, stress per cycle (constant amplitude or a rainflow
-counted spectrum), fracture toughness, growth rate coefficient. For each
+initial flaw size, stress per cycle (constant amplitude, a rainflow
+counted block, or an explicitly ordered mission), fracture toughness,
+growth rate coefficient. For each
 study DAMOCLES produces:
 
 - probability of failure over the service life, with an exact
@@ -120,6 +121,7 @@ git clone https://github.com/Krataios14/DAMOCLES
 cd DAMOCLES
 pip install -e .[dev]
 damocles examples/ti64_disk_bore.yaml --sensitivity --plot out/
+damocles examples/ordered_overload_mission.yaml
 python examples/ac3314_test_case.py
 python -m pytest -q
 ```
@@ -211,6 +213,62 @@ print(life.cycles_to_failure[0])
 run-out limit is reached and returns life in cycles. `grow_spectrum` remains
 the faster default when load interaction is intentionally excluded.
 
+Version 0.3 also routes the same ordered calculation through
+`DamageToleranceStudy`, YAML, and the CLI. Ordered mission records are
+immutable, bounded, and retained exactly as supplied: they are never sorted,
+merged, or binned. Each record represents one full cycle, or a residual half
+cycle from an ordered reversal history. For example:
+
+```yaml
+variables:
+  initial_flaw: {dist: deterministic, value: 1.0e-3}
+  stress_scale: {dist: deterministic, value: 1.0}
+  toughness: {dist: deterministic, value: 100.0}
+spectrum:
+  type: ordered
+  cycles:
+    - {delta_sigma: 1500.0, stress_ratio: 0.0}
+    - {delta_sigma: 1000.0, stress_ratio: 0.0}
+retardation:
+  model: willenborg
+  yield_strength: 1000.0
+  max_cycles: 100.0
+  max_blocks: 50
+  max_work: 1000000
+service_cycles: 100.0
+analysis: {samples: 1000, method: lhs, seed: 7}
+```
+
+Set `retardation: {model: none}` to run the same ordered mission with no
+load-interaction correction. Omitting `retardation` has exactly that meaning.
+Omitted `max_cycles` and `max_blocks` are derived from `service_cycles` and the
+sequence length; explicit values must cover the whole service interval. The
+hard ceilings are 100,000 cycle records per block, 100,000,000 elapsed cycles,
+1,000,000 blocks, and 100,000,000 prospective sample-cycle evaluations. A
+smaller `max_work` may be supplied. All limits are checked before Monte Carlo
+sampling or geometry evaluation begins.
+
+Inspection times in an ordered mission are strictly increasing elapsed-cycle
+checkpoints before the end of service. Every service horizon, explicit cycle
+limit, and inspection time must coincide exactly with a cumulative ordered
+record endpoint. A full-cycle record cannot be stopped at its half-cycle; a
+residual half-cycle record may end there. Checkpoints see the post-record crack,
+and a sample still alive at that endpoint retains its actual crack size for POD
+evaluation—even if that crack would be critical under a higher load later in
+the mission. If the opening load of the next record causes failure at the same
+elapsed endpoint, that endpoint is overwritten with the new record's critical
+size: the sample has failure life equal to the checkpoint and is not available
+for detection there. Once failure occurs, that and later checkpoints carry the
+cycle-specific critical size at which it was detected. DAMOCLES rejects
+non-boundaries before sampling instead of partly executing or interpolating a
+record. Endpoint validation accepts only a factory-prepared integer-tick index
+registered to the exact sequence identity and its canonical structural
+fingerprint. At each configuration, inspection, or growth trust boundary it
+recomputes a private endpoint snapshot and rejects changed scalar fields,
+fingerprints, or tables before arithmetic. A checkpoint batch therefore costs
+O(N + M) for N records and M checkpoints; a study crossing k such boundaries
+costs O(kN + M), with constant-time lookup after each validation.
+
 ## Interpreting the study output
 
 | Field | Meaning |
@@ -222,6 +280,8 @@ the faster default when load interaction is intentionally excluded.
 | `inspection.mean_detections` | expected detections per part over the life |
 | `sensitivity[name]["total"]` | total Sobol index of that input on log life |
 | `pof_curve_cycles`, `pof_curve` | the failure probability history |
+| `loading`, `life_unit`, `retardation` | explicit loading and result-unit provenance |
+| `prospective_work` | preflight upper bound on sample-cycle evaluations for an ordered mission |
 
 Run-outs (cracks below threshold that never grow) carry infinite life
 and are reported as such, not silently dropped.
@@ -253,6 +313,10 @@ alloys you have not tested.
   and the historical zero-effective-R convention. It is empirical and
   should be supported by representative spectrum-test data before use in a
   safety-critical life assessment.
+- Ordered mission studies are deliberately cycle-by-cycle and capped before
+  execution. Sobol sensitivity is not offered on this expensive path; use
+  explicitly bounded parameter sweeps. The no-retardation ordered baseline is
+  a numerical baseline, not validation of the Willenborg physical model.
 - One dominant crack per part. No multi-site damage, no continuing
   damage after repair (detected parts leave the fleet).
 - The AC 33.14 module covers the Appendix 1 ring disk class of problem:

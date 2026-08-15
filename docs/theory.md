@@ -155,6 +155,48 @@ need support from representative spectrum testing. The implementation follows
 Willenborg, Engle, and Wood, AFFDL-TM-71-1-FBR (1971), and the AFGROW Damage
 Tolerance Design Handbook, Section 5.2.1.2.
 
+An ordered mission may also be supplied to ``DamageToleranceStudy`` as an
+immutable ``SpectrumSequence`` or through a YAML ``spectrum`` mapping. Each
+cycle record is retained in encounter order: the high-level path performs no
+sorting, rainflow merging, or binning. Explicit records carry count 1.0;
+residual half cycles from an ordered reversal history may carry 0.5. Repeated
+physical cycles must be repeated as records because multiplying a rate by a
+large count would skip the crack-size and plastic-zone update between cycles.
+
+``WillenborgConfig`` selects either the Willenborg correction or an explicit
+ordered no-interaction baseline. In both cases the service horizon is in
+elapsed cycles. ``max_cycles`` defaults to the service life and ``max_blocks``
+to the number of sequence repetitions needed to reach it. User-supplied limits
+may be larger, but cannot leave the service interval unevaluated. The sequence,
+cycle, block, checkpoint, and prospective sample-cycle work bounds are checked
+before sampling and critical-size evaluation. These are computational safety
+bounds, not physical convergence criteria.
+
+For ordered missions the service horizon, explicit maximum cycle count, and
+every inspection checkpoint must equal a cumulative ordered-record endpoint.
+The check uses integer half-cycle ticks because records can contain only 0.5 or
+1.0 cycles; no floating tolerance can move a boundary. A full-cycle record
+cannot be stopped at 0.5 cycles, while an explicit residual half-cycle record
+can. A checkpoint observes the post-record crack size. After failure, that and
+later checkpoints carry the cycle-specific critical size at which failure was
+detected. A sample still alive at a checkpoint retains its actual crack size;
+it is not capped merely because a higher load later in the mission would make
+that crack critical. If the opening load of the following record instead
+establishes failure at that same elapsed endpoint, the observation is replaced
+by that record's critical size and failure life equals the endpoint. Because
+inspection eligibility is strictly ``t < Nf``, a part failing at ``t`` cannot
+also be detected at ``t``. This distinction is required for correct POD and
+residual risk. The integrator never partly executes or interpolates an ordered
+record and makes no claim of sub-cycle physical resolution. Endpoint validation
+accepts only a factory-prepared index registered to the exact sequence identity
+and a canonical fingerprint covering every cycle and sequence summary. Frozen
+Python attributes are not an integrity claim: every configuration, inspection,
+and growth trust boundary recomputes a private cumulative integer-tick snapshot,
+compares the prepared scalar fields and bounded read-only table, and then uses
+only the recomputed data. Each checkpoint batch is O(N + M) for N records and M
+checkpoints. A study crossing k validation boundaries is O(kN + M), with one
+dictionary lookup per horizon or checkpoint after each validation.
+
 ## 7. Inspections
 
 NDT capability is a probability of detection curve, lognormal in crack
@@ -212,7 +254,8 @@ default to the Change 1 tables.
 
 - LEFM throughout; no plasticity correction, no initiation life.
 - Constant amplitude or repeating-block loading; ordered Willenborg
-  retardation is available via ``grow_spectrum_retarded`` using the
+  retardation is available via ``grow_spectrum_retarded`` and high-level
+  ordered mission studies using the
   plane-stress and zero-effective-R assumptions described above.
 - A single dominant crack per part; no continuing damage or multi-site
   interaction.
