@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "damocles"
-version = "0.2.0"
+version = "0.3.0"
 description = "Damage tolerance Monte Carlo: NASGRO crack growth, Newman-Raju SIFs, POD-based inspection planning, and the FAA AC 33.14-1 calibration test case inside the published acceptance bands"
 readme = "README.md"
 requires-python = ">=3.10"
